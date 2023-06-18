@@ -145,7 +145,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>moe.herz.BlockwartBot</mainClass>
+                                    <mainClass>moe.herz.Musicbot</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
