@@ -8,6 +8,8 @@ import java.net.URISyntaxException;
 import java.net.URI;
 import java.io.FileInputStream;
 import java.util.Properties;
+import java.sql.Connection;
+import java.sql.*;
 
 import org.pircbotx.Configuration;
 import org.pircbotx.PircBotX;
@@ -25,12 +27,28 @@ public class Musicbot extends ListenerAdapter {
     private static final String botName = "Undine"; // Moved botName here, and made it static
     private YoutubeService youtubeService;
     private LastFmService lastFmService;
+    private TellMessageHandler tellMessageHandler;
     private Properties properties;
+
+    // Database connection
+    private Connection db;
 
     public void loadProperties() {
         try (FileInputStream in = new FileInputStream("./config.properties")) {
             properties = new Properties();
             properties.load(in);
+
+            // Connect to database
+            String databaseURL = properties.getProperty("db.url");
+            Connection conn = null;
+            try {
+                conn = DriverManager.getConnection(databaseURL, properties);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+            db = conn;
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -52,7 +70,11 @@ public class Musicbot extends ListenerAdapter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        try {
+            tellMessageHandler = new TellMessageHandler(db);
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
@@ -82,7 +104,7 @@ public class Musicbot extends ListenerAdapter {
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
         if (user != null && user.getNick().equals(botName)) {
-            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.1)");
+            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.2)");
         }
     }
 
@@ -173,7 +195,6 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
-
     @Override
     public void onInvite(InviteEvent event) {
         User user = event.getUser();
@@ -182,6 +203,23 @@ public class Musicbot extends ListenerAdapter {
             if (channelName != null) {
                 event.getBot().sendIRC().joinChannel(channelName);
             }
+        }
+    }
+
+    @Override
+    public void onMessage(MessageEvent event) {
+        User user = event.getUser();
+        if (user == null) {
+            return;
+        }
+
+        String messageText = event.getMessage();
+        String sender = user.getNick();
+
+        if (messageText.startsWith(".tell")) {
+            tellMessageHandler.handleTellMessage(sender, messageText, event);
+        } else {
+            tellMessageHandler.handleRegularMessage(sender, event);
         }
     }
 
