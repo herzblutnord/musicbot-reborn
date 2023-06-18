@@ -34,7 +34,7 @@ public class Musicbot extends ListenerAdapter {
     private Connection db;
 
     public void loadProperties() {
-        try (FileInputStream in = new FileInputStream("./config.properties")) {
+        try (FileInputStream in = new FileInputStream("./config2.properties")) {
             properties = new Properties();
             properties.load(in);
 
