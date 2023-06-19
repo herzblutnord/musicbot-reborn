@@ -10,13 +10,17 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import org.pircbotx.hooks.events.MessageEvent;
 
 public class TellMessageHandler {
 
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm")
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.of("Europe/Berlin"));
+
     private static final int MAX_UNSENT_MESSAGES = 5;
     private static final int MAX_RECEIVED_MESSAGES = 10;
 
@@ -42,9 +46,35 @@ public class TellMessageHandler {
                 while (rs2.next()) {
                     String sender = rs2.getString("sender");
                     String message = rs2.getString("message");
-                    String timestamp = rs2.getString("timestamp");
-                    messages.add(sender + " (" + timestamp + "): " + message);
+
+                    // Get current date and time
+                    LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Berlin"));
+
+                    // Parse stored time and combine with current date
+                    LocalTime storedTime = LocalTime.parse(rs2.getString("timestamp"), DateTimeFormatter.ofPattern("HH:mm"));
+                    LocalDateTime storedDateTime = LocalDateTime.of(now.toLocalDate(), storedTime);
+
+                    // If stored time is in future (possible due to late-night messages), subtract 1 day
+                    if (storedDateTime.isAfter(now)) {
+                        storedDateTime = storedDateTime.minusDays(1);
+                    }
+
+                    // Calculate time difference
+                    long totalMinutes = ChronoUnit.MINUTES.between(storedDateTime, now);
+                    long hours = totalMinutes / 60;
+                    long minutes = totalMinutes % 60;
+
+                    // Generate "time ago" string
+                    String timeAgo;
+                    if (hours > 0) {
+                        timeAgo = hours + "h " + minutes + "m ago";
+                    } else {
+                        timeAgo = minutes + "m ago";
+                    }
+
+                    messages.add(sender + " (" + timeAgo + "): " + message);
                 }
+
                 unsentMessages.put(recipient, messages);
                 st2.close();
                 rs2.close();
@@ -102,22 +132,46 @@ public class TellMessageHandler {
     public void handleRegularMessage(String sender, MessageEvent event) {
         if (unsentMessages.containsKey(sender)) {
             LinkedList<String> messages = unsentMessages.get(sender);
-            int messageCount = messages.size();
             int sentCount = 0;
 
             unsentMessages.remove(sender);
             messagesToReceive.put(sender, 0);
 
             event.getChannel().send().message(sender + ", you have postponed messages: ");
-            for (String message : messages) {
-                if(sentCount < 3){
-                    event.getChannel().send().message(message);
+            for (String storedMessage : messages) {
+                // Split storedMessage into components
+                int firstParenIndex = storedMessage.indexOf('(');
+                int lastParenIndex = storedMessage.indexOf(')');
+                String timestamp = storedMessage.substring(firstParenIndex + 1, lastParenIndex).trim();
+                String messageText = storedMessage.substring(lastParenIndex + 2).trim();
+
+                // Parse timestamp and calculate relative time
+                ZonedDateTime messageTime = ZonedDateTime.parse(timestamp, TIME_FORMATTER);
+                ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Berlin"));
+                long totalMinutes = ChronoUnit.MINUTES.between(messageTime, now);
+                long hours = totalMinutes / 60;
+                long minutes = totalMinutes % 60;
+
+                // Format relative time
+                String timeAgo;
+                if (hours > 0) {
+                    timeAgo = hours + "h " + minutes + "m ago";
                 } else {
-                    event.getBot().sendIRC().message(sender, message);
+                    timeAgo = minutes + "m ago";
+                }
+
+                // Reconstruct storedMessage with relative time
+                String formattedMessage = sender + " (" + timeAgo + "): " + messageText;
+
+                // Send storedMessage
+                if (sentCount < 3) {
+                    event.getChannel().send().message(formattedMessage);
+                } else {
+                    event.getBot().sendIRC().message(sender, formattedMessage);
                 }
                 sentCount++;
             }
-            if (messageCount > 3) {
+            if (messages.size() > 3) {
                 event.getChannel().send().message("The remaining messages were sent via DM");
             }
 
