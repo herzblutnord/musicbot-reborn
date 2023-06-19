@@ -24,7 +24,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 public class Musicbot extends ListenerAdapter {
-    private static final String botName = "Undine"; // Moved botName here, and made it static
+    private static final String botName = "UndineWIP"; // Moved botName here, and made it static
     private YoutubeService youtubeService;
     private LastFmService lastFmService;
     private TellMessageHandler tellMessageHandler;
@@ -104,7 +104,7 @@ public class Musicbot extends ListenerAdapter {
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
         if (user != null && user.getNick().equals(botName)) {
-            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.2)");
+            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.3)");
         }
     }
 

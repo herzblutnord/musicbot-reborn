@@ -16,7 +16,6 @@ import java.util.Scanner;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
-
 public class LastFmService {
     private final String apiKey;
 
@@ -103,8 +102,6 @@ public class LastFmService {
             return "Error retrieving last.fm data";
         }
     }
-
-    // Add this method to the LastFmService class
 
     public String getTopTags(String artist, String album) {
         String artistEncoded = URLEncoder.encode(artist, StandardCharsets.UTF_8);
