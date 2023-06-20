@@ -6,7 +6,7 @@
 
     <groupId>moe.herz</groupId>
     <artifactId>musicbot</artifactId>
-    <version>0.3</version>
+    <version>0.4</version>
 
     <properties>
         <maven.compiler.source>20</maven.compiler.source>
@@ -76,6 +76,19 @@
             <artifactId>jsoup</artifactId>
             <version>1.16.1</version>
         </dependency>
+
+        <dependency>
+            <groupId>net.sourceforge.htmlunit</groupId>
+            <artifactId>htmlunit</artifactId>
+             <version>2.70.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.ocpsoft.prettytime</groupId>
+            <artifactId>prettytime</artifactId>
+            <version>5.0.6.Final</version>
+        </dependency>
+
 
         <dependency>
             <groupId>org.postgresql</groupId>

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>moe.herz</groupId>
   <artifactId>musicbot</artifactId>
-  <version>0.2</version>
+  <version>0.3</version>
   <build>
     <plugins>
       <plugin>

@@ -1,25 +1,15 @@
 package moe.herz;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.util.Locale;
 
+import org.ocpsoft.prettytime.PrettyTime;
 import org.pircbotx.hooks.events.MessageEvent;
 
 public class TellMessageHandler {
-
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.of("Europe/Berlin"));
 
     private static final int MAX_UNSENT_MESSAGES = 5;
     private static final int MAX_RECEIVED_MESSAGES = 10;
@@ -28,53 +18,30 @@ public class TellMessageHandler {
     private final Map<String, Integer> messagesToReceive = new HashMap<>();
 
     private final Connection db;
+    private final PrettyTime p;
 
     public TellMessageHandler(Connection db) {
         this.db = db;
+        this.p = new PrettyTime(Locale.ENGLISH);
 
         try {
-            Statement st = this.db.createStatement();
-
-            ResultSet rs = st.executeQuery("SELECT * FROM tellNew"); // Using a different table name
+            PreparedStatement st = this.db.prepareStatement("SELECT * FROM tellNew");
+            ResultSet rs = st.executeQuery();
             while (rs.next()) {
                 String recipient = rs.getString("recipient");
                 messagesToReceive.put(recipient, messagesToReceive.getOrDefault(recipient, 0) + 1);
 
-                Statement st2 = this.db.createStatement();
-                ResultSet rs2 = st2.executeQuery("SELECT * FROM tellNew WHERE recipient = '" + recipient + "'");
+                PreparedStatement st2 = this.db.prepareStatement("SELECT * FROM tellNew WHERE recipient = ?");
+                st2.setString(1, recipient);
+                ResultSet rs2 = st2.executeQuery();
                 LinkedList<String> messages = new LinkedList<>();
                 while (rs2.next()) {
                     String sender = rs2.getString("sender");
                     String message = rs2.getString("message");
-
-                    // Get current date and time
-                    LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Berlin"));
-
-                    // Parse stored time and combine with current date
-                    LocalTime storedTime = LocalTime.parse(rs2.getString("timestamp"), DateTimeFormatter.ofPattern("HH:mm"));
-                    LocalDateTime storedDateTime = LocalDateTime.of(now.toLocalDate(), storedTime);
-
-                    // If stored time is in future (possible due to late-night messages), subtract 1 day
-                    if (storedDateTime.isAfter(now)) {
-                        storedDateTime = storedDateTime.minusDays(1);
-                    }
-
-                    // Calculate time difference
-                    long totalMinutes = ChronoUnit.MINUTES.between(storedDateTime, now);
-                    long hours = totalMinutes / 60;
-                    long minutes = totalMinutes % 60;
-
-                    // Generate "time ago" string
-                    String timeAgo;
-                    if (hours > 0) {
-                        timeAgo = hours + "h " + minutes + "m ago";
-                    } else {
-                        timeAgo = minutes + "m ago";
-                    }
-
-                    messages.add(sender + " (" + timeAgo + "): " + message);
+                    Timestamp timestamp = rs2.getTimestamp("timestamp");
+                    String relativeTimestamp = p.format(timestamp);
+                    messages.add(sender + " (" + relativeTimestamp + "): " + message);
                 }
-
                 unsentMessages.put(recipient, messages);
                 st2.close();
                 rs2.close();
@@ -93,7 +60,6 @@ public class TellMessageHandler {
         } else {
             String recipient = parts[1];
             String message = parts[2];
-            String timestamp = ZonedDateTime.now().format(TIME_FORMATTER);
 
             if (recipient.equalsIgnoreCase(sender)) {
                 event.respond("Aww, talking to yourself? How pitiful...");
@@ -114,12 +80,16 @@ public class TellMessageHandler {
                 return;
             }
 
-            unsentMessages.computeIfAbsent(recipient, k -> new LinkedList<>()).add(sender + " (" + timestamp + "): " + message);
+            unsentMessages.computeIfAbsent(recipient, k -> new LinkedList<>()).add(sender + " (Just now): " + message);
             messagesToReceive.put(recipient, messagesToReceive.getOrDefault(recipient, 0) + 1);
 
             try {
-                Statement st = db.createStatement();
-                st.executeUpdate("INSERT INTO tellNew (sender, recipient, message, timestamp) VALUES ('" + sender + "', '" + recipient + "', '" + message + "', '" + timestamp + "')");
+                PreparedStatement st = db.prepareStatement("INSERT INTO tellNew (sender, recipient, message, timestamp) VALUES (?, ?, ?, ?)");
+                st.setString(1, sender);
+                st.setString(2, recipient);
+                st.setString(3, message);
+                st.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+                st.executeUpdate();
                 st.close();
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -132,52 +102,29 @@ public class TellMessageHandler {
     public void handleRegularMessage(String sender, MessageEvent event) {
         if (unsentMessages.containsKey(sender)) {
             LinkedList<String> messages = unsentMessages.get(sender);
+            int messageCount = messages.size();
             int sentCount = 0;
 
             unsentMessages.remove(sender);
             messagesToReceive.put(sender, 0);
 
             event.getChannel().send().message(sender + ", you have postponed messages: ");
-            for (String storedMessage : messages) {
-                // Split storedMessage into components
-                int firstParenIndex = storedMessage.indexOf('(');
-                int lastParenIndex = storedMessage.indexOf(')');
-                String timestamp = storedMessage.substring(firstParenIndex + 1, lastParenIndex).trim();
-                String messageText = storedMessage.substring(lastParenIndex + 2).trim();
-
-                // Parse timestamp and calculate relative time
-                ZonedDateTime messageTime = ZonedDateTime.parse(timestamp, TIME_FORMATTER);
-                ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Berlin"));
-                long totalMinutes = ChronoUnit.MINUTES.between(messageTime, now);
-                long hours = totalMinutes / 60;
-                long minutes = totalMinutes % 60;
-
-                // Format relative time
-                String timeAgo;
-                if (hours > 0) {
-                    timeAgo = hours + "h " + minutes + "m ago";
+            for (String message : messages) {
+                if(sentCount < 3){
+                    event.getChannel().send().message(message);
                 } else {
-                    timeAgo = minutes + "m ago";
-                }
-
-                // Reconstruct storedMessage with relative time
-                String formattedMessage = sender + " (" + timeAgo + "): " + messageText;
-
-                // Send storedMessage
-                if (sentCount < 3) {
-                    event.getChannel().send().message(formattedMessage);
-                } else {
-                    event.getBot().sendIRC().message(sender, formattedMessage);
+                    event.getBot().sendIRC().message(sender, message);
                 }
                 sentCount++;
             }
-            if (messages.size() > 3) {
+            if (messageCount > 3) {
                 event.getChannel().send().message("The remaining messages were sent via DM");
             }
 
             try {
-                Statement st = db.createStatement();
-                st.executeUpdate("DELETE FROM tellNew WHERE recipient = '" + sender + "'");
+                PreparedStatement st = db.prepareStatement("DELETE FROM tellNew WHERE recipient = ?");
+                st.setString(1, sender);
+                st.executeUpdate();
                 st.close();
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -185,4 +132,3 @@ public class TellMessageHandler {
         }
     }
 }
-

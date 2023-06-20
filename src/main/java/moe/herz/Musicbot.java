@@ -22,6 +22,8 @@ import org.pircbotx.hooks.events.InviteEvent;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 public class Musicbot extends ListenerAdapter {
     private static final String botName = "UndineWIP"; // Moved botName here, and made it static
@@ -104,20 +106,31 @@ public class Musicbot extends ListenerAdapter {
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
         if (user != null && user.getNick().equals(botName)) {
-            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.3)");
+            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.4)");
         }
     }
 
     // Method to fetch website metadata
-    public String fetchWebsiteMetadata(String url) {
+    public static String fetchWebsiteMetadata(String url) {
         try {
-            new URI(url);
-            Document doc = Jsoup.connect(url).get();
-            return doc.title();
-        } catch (URISyntaxException exception) {
+            new URI(url); // Check that it's a valid URL
+            try {
+                // Try with Jsoup first
+                Document doc = Jsoup.connect(url).get();
+                return doc.title();
+            } catch (IOException e) {
+                // If Jsoup fails, fall back to HtmlUnit
+                try (final WebClient webClient = new WebClient()) {
+                    webClient.getOptions().setJavaScriptEnabled(true);
+                    webClient.getCookieManager().setCookiesEnabled(true);
+                    final HtmlPage page = webClient.getPage(url);
+                    return page.getTitleText();
+                }
+            }
+        } catch (URISyntaxException e) {
             return "Invalid URL";
-        } catch (IOException e) {
-            return "Error connecting to URL: ";
+        } catch (Exception e) {
+            return "Error connecting to URL";
         }
     }
 
