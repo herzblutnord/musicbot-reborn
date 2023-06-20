@@ -11,6 +11,8 @@ import java.util.Properties;
 import java.sql.Connection;
 import java.sql.*;
 
+import java.net.HttpURLConnection;
+
 import org.pircbotx.Configuration;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.ListenerAdapter;
@@ -97,8 +99,6 @@ public class Musicbot extends ListenerAdapter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
     }
 
     // Greeting on bot joining
@@ -113,16 +113,20 @@ public class Musicbot extends ListenerAdapter {
     // Method to fetch website metadata
     public static String fetchWebsiteMetadata(String url) {
         try {
-            new URI(url); // Check that it's a valid URL
+            URI uri = new URI(url); // Check that it's a valid URL
             try {
-                // Try with Jsoup first
-                Document doc = Jsoup.connect(url).get();
+                // Send an HTTP GET request
+                HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
+                connection.setRequestMethod("GET");
+                connection.connect();
+
+                // Parse the HTML content
+                Document doc = Jsoup.parse(connection.getInputStream(), null, url);
                 return doc.title();
             } catch (IOException e) {
-                // If Jsoup fails, fall back to HtmlUnit
+                // If the GET request fails, fall back to HtmlUnit
                 try (final WebClient webClient = new WebClient()) {
-                    webClient.getOptions().setJavaScriptEnabled(true);
-                    webClient.getCookieManager().setCookiesEnabled(true);
+                    webClient.getOptions().setJavaScriptEnabled(false);  // Disable JavaScript
                     final HtmlPage page = webClient.getPage(url);
                     return page.getTitleText();
                 }
