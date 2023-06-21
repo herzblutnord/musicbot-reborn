@@ -28,7 +28,7 @@ import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 public class Musicbot extends ListenerAdapter {
-    private static final String botName = "UndineWIP"; // Moved botName here, and made it static
+    private static final String botName = "Undine"; // Moved botName here, and made it static
     private YoutubeService youtubeService;
     private LastFmService lastFmService;
     private TellMessageHandler tellMessageHandler;
@@ -106,7 +106,7 @@ public class Musicbot extends ListenerAdapter {
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
         if (user != null && user.getNick().equals(botName)) {
-            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.4)");
+            event.getChannel().send().message("Greetings from the depths, I'm " + botName + ", your helpful water spirit! (Version 0.5)");
         }
     }
 
@@ -239,5 +239,4 @@ public class Musicbot extends ListenerAdapter {
             tellMessageHandler.handleRegularMessage(sender, event);
         }
     }
-
 }
