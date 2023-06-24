@@ -88,12 +88,9 @@ public class LastFmService {
                                     }
                                     return lastPlayedMessage;
                                 }
-
-
                             }
                         }
                     }
-
                     return "No recent tracks found";
                 }
             }
@@ -147,5 +144,4 @@ public class LastFmService {
         }
         return "";
     }
-
 }
