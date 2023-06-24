@@ -19,8 +19,8 @@ import java.nio.charset.StandardCharsets;
 public class LastFmService {
     private final String apiKey;
 
-    public LastFmService(Musicbot musicbot) {
-        this.apiKey = musicbot.getProperty("lfm.apiKey");
+    public LastFmService(Config config) {
+        this.apiKey = config.getProperty("lfm.apiKey");
     }
 
     public String getCurrentTrack(String username) {

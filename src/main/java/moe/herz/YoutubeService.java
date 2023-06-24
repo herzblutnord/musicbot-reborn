@@ -14,8 +14,8 @@ public class YoutubeService {
     private YouTube youtube;
     private final String apiKey;
 
-    public YoutubeService(Musicbot musicbot) {
-        this.apiKey = musicbot.getProperty("yt.apiKey");
+    public YoutubeService(Config config) {
+        this.apiKey = config.getProperty("yt.apiKey");
         try {
             youtube = new YouTube.Builder(GoogleNetHttpTransport.newTrustedTransport(),
                     GsonFactory.getDefaultInstance(), null)
