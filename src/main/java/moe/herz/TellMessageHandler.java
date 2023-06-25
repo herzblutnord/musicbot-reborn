@@ -127,7 +127,8 @@ public class TellMessageHandler {
             }
             deleteMessageFromDatabase(message);
         }
-        if (event instanceof MessageEvent && counter >= MAX_MESSAGES_IN_CHANNEL) {
+        // Add additional check for total number of messages
+        if (event instanceof MessageEvent && counter == MAX_MESSAGES_IN_CHANNEL && messages.size() > MAX_MESSAGES_IN_CHANNEL) {
             MessageEvent messageEvent = (MessageEvent) event;
             event.getBot().sendIRC().message(messageEvent.getChannel().getName(), "The remaining messages were sent via DM");
         }
