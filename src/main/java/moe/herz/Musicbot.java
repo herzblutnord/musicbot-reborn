@@ -15,17 +15,24 @@ import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
 
 public class Musicbot extends ListenerAdapter {
-    private static final String BOT_NAME = "UndineWIP";
-    private static final String BOT_VERSION = "0.5.2";
-
     private final YoutubeService youtubeService;
     private final LastFmService lastFmService;
     private final TellMessageHandler tellMessageHandler;
 
-    public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler) {
+    private final String BOT_NAME;
+    private final String BOT_VERSION = "0.5.2";
+    private final String SERVER_NAME;
+    private final int SERVER_PORT;
+    private final String CHANNEL_NAME;
+
+    public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, Config config) {
         this.youtubeService = youtubeService;
         this.lastFmService = lastFmService;
         this.tellMessageHandler = tellMessageHandler;
+        this.BOT_NAME = config.getProperty("bot.name");
+        this.SERVER_NAME = config.getProperty("server.name");
+        this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
+        this.CHANNEL_NAME = config.getProperty("channel.name");
     }
 
     public static void main(String[] args) throws SQLException {
@@ -34,12 +41,12 @@ public class Musicbot extends ListenerAdapter {
         LastFmService lastFmService = new LastFmService(config);
         TellMessageHandler tellMessageHandler = new TellMessageHandler(config.getDbConnection());
 
-        Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler);
+        Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, config);
 
         Configuration configuration = new Configuration.Builder()
-                .setName(BOT_NAME)
-                .addServer("", 6697)
-                .addAutoJoinChannel("#musicbottesting2")
+                .setName(botInstance.BOT_NAME)
+                .addServer(botInstance.SERVER_NAME, botInstance.SERVER_PORT)
+                .addAutoJoinChannel(botInstance.CHANNEL_NAME)
                 .addListener(botInstance)
                 .setSocketFactory(SSLSocketFactory.getDefault())
                 .buildConfiguration();
