@@ -21,7 +21,7 @@ public class Musicbot extends ListenerAdapter {
     private final TellMessageHandler tellMessageHandler;
 
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.5.2";
+    private final String BOT_VERSION = "0.6";
     private final String SERVER_NAME;
     private final int SERVER_PORT;
     private final String CHANNEL_NAME;
@@ -37,7 +37,9 @@ public class Musicbot extends ListenerAdapter {
         this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
         this.CHANNEL_NAME = config.getProperty("channel.name");
         this.reminderHandler = new ReminderHandler(config.getDbConnection());
-
+        reminderHandler.init(); // First, initialize reminders from the database
+        reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
+        reminderHandler.init(); // Finally, reinitialize reminders from the updated database
     }
 
     public static void main(String[] args) throws SQLException {
@@ -93,7 +95,6 @@ public class Musicbot extends ListenerAdapter {
         } else {
             handleUrlFetching(event, matcher);
         }
-
     }
 
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {

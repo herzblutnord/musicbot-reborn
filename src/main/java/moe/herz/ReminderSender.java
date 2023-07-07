@@ -19,11 +19,15 @@ public class ReminderSender implements Runnable {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 Long nextReminderId = reminderHandler.peekNextReminder();
-                if (nextReminderId == null) { // Now this condition can be true
+                //System.out.println("Next reminder ID: " + nextReminderId); // Debug logging
+
+                if (nextReminderId == null) {
                     Thread.sleep(1000);
                     continue;
                 }
                 Instant nextReminderTime = reminderHandler.getReminderTime(nextReminderId);
+                //System.out.println("Next reminder time: " + nextReminderTime); // Debug logging
+
                 if (nextReminderTime == null) {
                     Thread.sleep(1000);
                     continue;
@@ -40,3 +44,4 @@ public class ReminderSender implements Runnable {
         }
     }
 }
+

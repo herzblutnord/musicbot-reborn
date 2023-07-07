@@ -14,58 +14,120 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Set;
+import java.util.HashSet;
+
 
 public class ReminderHandler {
-    private static final Pattern DURATION_PATTERN = Pattern.compile("^\\.in\\s+(\\d+)([smh])\\s+(.*)$");
-    private final PriorityQueue<Long> reminderQueue;
-    private final HashMap<Long, Instant> reminderTimes;
+    private static final Pattern DURATION_PATTERN = Pattern.compile("^\\.in\\s+((\\d+[wdhms])+)?\\s+(.*)$");
+    private final PriorityQueue<Reminder> reminderQueue;
+    private final HashMap<Long, Reminder> reminders;
 
     private final Connection dbConnection;
 
     public ReminderHandler(Connection dbConnection) {
         this.dbConnection = dbConnection;
         this.reminderQueue = new PriorityQueue<>();
-        this.reminderTimes = new HashMap<>();
+        this.reminders = new HashMap<>();
     }
 
     public void init() {
         // This method is called on bot startup. It should load any existing reminders
         // from the database and add them to reminderQueue and reminderTimes.
+
+        // Clear the current reminderQueue and reminderTimes
+        reminderQueue.clear();
+        reminders.clear();
+
+
         try (Statement stmt = dbConnection.createStatement()) {
             ResultSet rs = stmt.executeQuery("SELECT id, remind_at FROM UndineReminder");
             while (rs.next()) {
                 long id = rs.getLong(1);
                 Instant remindAt = rs.getTimestamp(2).toInstant();
-                reminderQueue.add(id);
-                reminderTimes.put(id, remindAt);
+
+                // Create a new Reminder instance and add it to the queue and map
+                Reminder reminder = new Reminder(id, remindAt);
+                reminderQueue.add(reminder);
+                reminders.put(id, reminder);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public void processReminderRequest(String sender, String message,String channel, GenericMessageEvent event) {
+
+    public void processReminderRequest(String sender, String message, String channel, GenericMessageEvent event) {
         Matcher matcher = DURATION_PATTERN.matcher(message);
         if (matcher.matches()) {
-            int durationValue = Integer.parseInt(matcher.group(1));
-            String durationType = matcher.group(2);
+            String durationString = matcher.group(1);
             String reminderMessage = matcher.group(3);
 
-            Instant remindAt = switch (durationType) {
-                case "s" -> Instant.now().plus(Duration.ofSeconds(durationValue));
-                case "m" -> Instant.now().plus(Duration.ofMinutes(durationValue));
-                case "h" -> Instant.now().plus(Duration.ofHours(durationValue));
-                default -> {
-                    event.respond("Invalid duration type. Please use s, m, or h for seconds, minutes, and hours.");
-                    yield null;
-                }
-            };
+            if (durationString == null || durationString.isEmpty()) {
+                event.getBot().sendIRC().message(channel, "Invalid duration format. Please specify a duration.");
+                return;
+            }
 
+            Duration duration = Duration.ZERO;
+
+            Pattern durationPattern = Pattern.compile("(\\d+)([wdhms])");
+            Matcher durationMatcher = durationPattern.matcher(durationString);
+            while (durationMatcher.find()) {
+                int durationValue = Integer.parseInt(durationMatcher.group(1));
+                String durationType = durationMatcher.group(2);
+
+                switch (durationType) {
+                    case "w" -> duration = duration.plus(Duration.ofDays((long) durationValue * 7));
+                    case "d" -> duration = duration.plus(Duration.ofDays(durationValue));
+                    case "h" -> duration = duration.plus(Duration.ofHours(durationValue));
+                    case "m" -> duration = duration.plus(Duration.ofMinutes(durationValue));
+                    case "s" -> duration = duration.plus(Duration.ofSeconds(durationValue));
+                }
+            }
+
+            // Limit the duration to 1 year (365 days)
+            if (duration.toDays() > 365) {
+                event.getBot().sendIRC().message(channel, "Sorry, the maximum duration for a reminder is 1 year.");
+                return;
+            }
+
+            Instant remindAt = Instant.now().plus(duration);
             addReminder(sender, reminderMessage, remindAt, channel);
-            event.respond("Okay, I will remind you in " + durationValue + " " + (durationType.equals("s") ? "seconds" : durationType.equals("m") ? "minutes" : "hours") + ".");
+
+            String readableDuration = getReadableDuration(duration);
+            event.getBot().sendIRC().message(channel, "Okay, I will remind you in " + readableDuration + ".");
         } else {
-            event.respond("Invalid command format. Please use .in [duration][s|m|h] [message].");
+            event.getBot().sendIRC().message(channel, "Invalid command format. Please use .in [duration][w|d|h|m|s] [message].");
         }
+    }
+
+
+
+    public String getReadableDuration(Duration duration) {
+        long seconds = duration.getSeconds();
+        long days = seconds / (24 * 60 * 60);
+        seconds %= (24 * 60 * 60);
+        long hours = seconds / (60 * 60);
+        seconds %= (60 * 60);
+        long minutes = seconds / 60;
+        seconds %= 60;
+
+        StringBuilder readableDuration = new StringBuilder();
+
+        if(days > 0) {
+            readableDuration.append(days).append(" days ");
+        }
+        if(hours > 0) {
+            readableDuration.append(hours).append(" hours ");
+        }
+        if(minutes > 0) {
+            readableDuration.append(minutes).append(" minutes ");
+        }
+        if(seconds > 0 || readableDuration.length() == 0) {
+            readableDuration.append(seconds).append(" seconds");
+        }
+
+        return readableDuration.toString().trim();
     }
 
 
@@ -81,22 +143,27 @@ public class ReminderHandler {
             ResultSet rs = pstmt.getGeneratedKeys();
             if (rs.next()) {
                 long id = rs.getLong(1);
-                reminderQueue.add(id);
-                reminderTimes.put(id, remindAt);
+
+                // create a new Reminder instance and add it to the queue and map
+                Reminder reminder = new Reminder(id, remindAt);
+                reminderQueue.add(reminder);
+                reminders.put(id, reminder);
+
+                //System.out.println("New reminder added. ID: " + id + ", Time: " + remindAt); // Debug logging
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+
     public Long peekNextReminder() {
-        // Returns the ID of the next reminder to be sent
-        return (reminderQueue.peek() != null) ? reminderQueue.peek() : null;
+        return (reminderQueue.peek() != null) ? reminderQueue.peek().getId() : null;
     }
 
     public Instant getReminderTime(long reminderId) {
-        // Returns the time when a specific reminder is scheduled to be sent
-        return reminderTimes.get(reminderId);
+        Reminder reminder = reminders.get(reminderId);
+        return (reminder != null) ? reminder.getTime() : null;
     }
 
     public SimpleEntry<String, String> fetchReminder(long reminderId) {
@@ -119,14 +186,25 @@ public class ReminderHandler {
     }
 
     public void removeReminder(long reminderId) {
-        // Removes a reminder from the queue, the times map, and the database
-        reminderQueue.remove(reminderId);
-        reminderTimes.remove(reminderId);
+        Reminder reminder = reminders.get(reminderId);
+        reminderQueue.remove(reminder);
+        reminders.remove(reminderId);
         try (PreparedStatement pstmt = dbConnection.prepareStatement("DELETE FROM UndineReminder WHERE id = ?")) {
             pstmt.setLong(1, reminderId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void cleanupOldReminders() {
+        Instant now = Instant.now();
+        Set<Long> ids = new HashSet<>(this.reminders.keySet()); // Create a copy of the key set
+        for (Long id : ids) {
+            Instant reminderTime = this.getReminderTime(id);
+            if (reminderTime != null && reminderTime.isBefore(now)) {
+                this.removeReminder(id);
+            }
         }
     }
 }
