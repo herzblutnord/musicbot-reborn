@@ -13,6 +13,7 @@ import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
+import org.pircbotx.hooks.events.PrivateMessageEvent;
 
 public class Musicbot extends ListenerAdapter {
     private final YoutubeService youtubeService;
@@ -24,6 +25,8 @@ public class Musicbot extends ListenerAdapter {
     private final String SERVER_NAME;
     private final int SERVER_PORT;
     private final String CHANNEL_NAME;
+    private final ReminderHandler reminderHandler;
+
 
     public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, Config config) {
         this.youtubeService = youtubeService;
@@ -33,6 +36,8 @@ public class Musicbot extends ListenerAdapter {
         this.SERVER_NAME = config.getProperty("server.name");
         this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
         this.CHANNEL_NAME = config.getProperty("channel.name");
+        this.reminderHandler = new ReminderHandler(config.getDbConnection());
+
     }
 
     public static void main(String[] args) throws SQLException {
@@ -52,11 +57,18 @@ public class Musicbot extends ListenerAdapter {
                 .buildConfiguration();
 
         try (PircBotX bot = new PircBotX(configuration)) {
+            // Initialize reminderHandler and start the reminder sender thread
+            botInstance.reminderHandler.init();
+            Thread reminderSenderThread = new Thread(new ReminderSender(botInstance.reminderHandler, bot));
+
+            reminderSenderThread.start();
+
             bot.startBot();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
     @Override
     public void onJoin(JoinEvent event) {
@@ -74,11 +86,14 @@ public class Musicbot extends ListenerAdapter {
 
         if (message.startsWith(".np ")) {
             handleNowPlayingCommand(event, message);
+        } else if (message.startsWith(".in ")) {
+            handleReminderCommand(event, message);
         } else if (message.startsWith(".yt ")) {
             handleYoutubeCommand(event, message);
         } else {
             handleUrlFetching(event, matcher);
         }
+
     }
 
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {
@@ -160,6 +175,16 @@ public class Musicbot extends ListenerAdapter {
             tellMessageHandler.handleTellMessage(sender, messageText, event);
         } else {
             tellMessageHandler.handleRegularMessage(sender, event);
+        }
+    }
+
+    private void handleReminderCommand(GenericMessageEvent event, String message) {
+        String sender = event.getUser().getNick();
+        if (event instanceof MessageEvent messageEvent) {
+            reminderHandler.processReminderRequest(sender, message, messageEvent.getChannel().getName(), event);
+        } else if (event instanceof PrivateMessageEvent) {
+            // Handle the case for a private message, perhaps like this:
+            reminderHandler.processReminderRequest(sender, message, sender, event);
         }
     }
 }
