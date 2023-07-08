@@ -18,24 +18,20 @@ public class ReminderSender implements Runnable {
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                Long nextReminderId = reminderHandler.peekNextReminder();
-                //System.out.println("Next reminder ID: " + nextReminderId); // Debug logging
+                Reminder nextReminder = reminderHandler.getNextReminder();
+                //System.out.println("Next reminder: " + nextReminder); // Debug logging
 
-                if (nextReminderId == null) {
+                if (nextReminder == null) {
                     Thread.sleep(1000);
                     continue;
                 }
-                Instant nextReminderTime = reminderHandler.getReminderTime(nextReminderId);
-                //System.out.println("Next reminder time: " + nextReminderTime); // Debug logging
 
-                if (nextReminderTime == null) {
-                    Thread.sleep(1000);
-                    continue;
-                }
+                Instant nextReminderTime = nextReminder.getTime();
+
                 if (nextReminderTime.isBefore(Instant.now())) {
-                    SimpleEntry<String, String> reminder = reminderHandler.fetchReminder(nextReminderId);
+                    SimpleEntry<String, String> reminder = reminderHandler.fetchReminder(nextReminder.getId());
                     bot.sendIRC().message(reminder.getValue(), reminder.getKey());
-                    reminderHandler.removeReminder(nextReminderId);
+                    reminderHandler.removeReminder(nextReminder.getId());
                 }
                 Thread.sleep(1000);
             } catch (InterruptedException e) {

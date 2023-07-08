@@ -184,7 +184,7 @@ public class Musicbot extends ListenerAdapter {
         if (event instanceof MessageEvent messageEvent) {
             reminderHandler.processReminderRequest(sender, message, messageEvent.getChannel().getName(), event);
         } else if (event instanceof PrivateMessageEvent) {
-            // Handle the case for a private message, perhaps like this:
+            // Handle the case for a private message
             reminderHandler.processReminderRequest(sender, message, sender, event);
         }
     }

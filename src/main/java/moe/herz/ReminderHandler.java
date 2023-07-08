@@ -11,24 +11,22 @@ import java.sql.Timestamp;
 import java.sql.ResultSet;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.PriorityQueue;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Set;
 import java.util.HashSet;
-
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ReminderHandler {
     private static final Pattern DURATION_PATTERN = Pattern.compile("^\\.in\\s+((\\d+[wdhms])+)?\\s+(.*)$");
-    private final PriorityQueue<Reminder> reminderQueue;
-    private final HashMap<Long, Reminder> reminders;
-
+    private final PriorityBlockingQueue<Reminder> reminderQueue;
+    private final ConcurrentHashMap<Long, Reminder> reminders;
     private final Connection dbConnection;
 
     public ReminderHandler(Connection dbConnection) {
         this.dbConnection = dbConnection;
-        this.reminderQueue = new PriorityQueue<>();
-        this.reminders = new HashMap<>();
+        this.reminderQueue = new PriorityBlockingQueue<>();
+        this.reminders = new ConcurrentHashMap<>();
     }
 
     public void init() {
@@ -38,7 +36,6 @@ public class ReminderHandler {
         // Clear the current reminderQueue and reminderTimes
         reminderQueue.clear();
         reminders.clear();
-
 
         try (Statement stmt = dbConnection.createStatement()) {
             ResultSet rs = stmt.executeQuery("SELECT id, remind_at FROM UndineReminder");
@@ -56,7 +53,6 @@ public class ReminderHandler {
         }
     }
 
-
     public void processReminderRequest(String sender, String message, String channel, GenericMessageEvent event) {
         Matcher matcher = DURATION_PATTERN.matcher(message);
         if (matcher.matches()) {
@@ -73,15 +69,21 @@ public class ReminderHandler {
             Pattern durationPattern = Pattern.compile("(\\d+)([wdhms])");
             Matcher durationMatcher = durationPattern.matcher(durationString);
             while (durationMatcher.find()) {
-                int durationValue = Integer.parseInt(durationMatcher.group(1));
-                String durationType = durationMatcher.group(2);
+                // Add try-catch block here
+                try {
+                    long durationValue = Long.parseLong(durationMatcher.group(1)); // Changed to long
+                    String durationType = durationMatcher.group(2);
 
-                switch (durationType) {
-                    case "w" -> duration = duration.plus(Duration.ofDays((long) durationValue * 7));
-                    case "d" -> duration = duration.plus(Duration.ofDays(durationValue));
-                    case "h" -> duration = duration.plus(Duration.ofHours(durationValue));
-                    case "m" -> duration = duration.plus(Duration.ofMinutes(durationValue));
-                    case "s" -> duration = duration.plus(Duration.ofSeconds(durationValue));
+                    switch (durationType) {
+                        case "w" -> duration = duration.plus(Duration.ofDays(durationValue * 7));
+                        case "d" -> duration = duration.plus(Duration.ofDays(durationValue));
+                        case "h" -> duration = duration.plus(Duration.ofHours(durationValue));
+                        case "m" -> duration = duration.plus(Duration.ofMinutes(durationValue));
+                        case "s" -> duration = duration.plus(Duration.ofSeconds(durationValue));
+                    }
+                } catch (NumberFormatException e) {
+                    event.getBot().sendIRC().message(channel, "The duration value is too large. Please enter a smaller value.");
+                    return;
                 }
             }
 
@@ -100,7 +102,6 @@ public class ReminderHandler {
             event.getBot().sendIRC().message(channel, "Invalid command format. Please use .in [duration][w|d|h|m|s] [message].");
         }
     }
-
 
 
     public String getReadableDuration(Duration duration) {
@@ -130,7 +131,6 @@ public class ReminderHandler {
         return readableDuration.toString().trim();
     }
 
-
     public void addReminder(String sender, String message, Instant remindAt, String channel) {
         try (PreparedStatement pstmt = dbConnection.prepareStatement("INSERT INTO UndineReminder (sender, message, remind_at, channel) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, sender);
@@ -156,9 +156,8 @@ public class ReminderHandler {
         }
     }
 
-
-    public Long peekNextReminder() {
-        return (reminderQueue.peek() != null) ? reminderQueue.peek().getId() : null;
+    public Reminder getNextReminder() {
+        return reminderQueue.peek();
     }
 
     public Instant getReminderTime(long reminderId) {
@@ -186,14 +185,18 @@ public class ReminderHandler {
     }
 
     public void removeReminder(long reminderId) {
-        Reminder reminder = reminders.get(reminderId);
-        reminderQueue.remove(reminder);
-        reminders.remove(reminderId);
-        try (PreparedStatement pstmt = dbConnection.prepareStatement("DELETE FROM UndineReminder WHERE id = ?")) {
-            pstmt.setLong(1, reminderId);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        Reminder reminder = reminders.remove(reminderId);
+        if (reminder != null) {
+            boolean wasRemoved = reminderQueue.remove(reminder);
+            if (!wasRemoved) {
+                System.out.println("Reminder was not removed from the queue!");
+            }
+            try (PreparedStatement pstmt = dbConnection.prepareStatement("DELETE FROM UndineReminder WHERE id = ?")) {
+                pstmt.setLong(1, reminderId);
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
