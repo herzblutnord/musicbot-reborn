@@ -72,7 +72,7 @@ public class LastFmService {
 
                                 String topTags = "";
                                 if (album != null) {
-                                    topTags = getTopTags(artistName, album);
+                                    topTags = getTopTags(artistName);
                                 }
 
                                 if (nowPlaying) {
@@ -100,12 +100,12 @@ public class LastFmService {
         }
     }
 
-    public String getTopTags(String artist, String album) {
+    public String getTopTags(String artist) {
         String artistEncoded = URLEncoder.encode(artist, StandardCharsets.UTF_8);
-        String albumEncoded = URLEncoder.encode(album, StandardCharsets.UTF_8);
 
-        String url = String.format("http://ws.audioscrobbler.com/2.0/?method=album.gettoptags&artist=%s&album=%s&api_key=%s&format=json",
-                artistEncoded, albumEncoded, apiKey);
+        // Using artist.gettoptags method in URL
+        String url = String.format("http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=%s&api_key=%s&format=json",
+                artistEncoded, apiKey);
         try {
             URI uri = new URI(url);
             HttpRequest request = HttpRequest.newBuilder(uri).build();
@@ -125,7 +125,7 @@ public class LastFmService {
                     JsonObject topTags = jsonObject.getAsJsonObject("toptags");
                     JsonArray tagArray = topTags.getAsJsonArray("tag");
 
-                    // Get the top two or three tags
+                    // Get the top three tags
                     int tagCount = Math.min(tagArray.size(), 3);
                     StringBuilder topTagsBuilder = new StringBuilder();
                     for (int i = 0; i < tagCount; i++) {

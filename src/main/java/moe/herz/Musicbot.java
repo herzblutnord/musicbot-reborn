@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import javax.net.ssl.SSLSocketFactory;
+import java.util.List;
 
 import org.pircbotx.Configuration;
 import org.pircbotx.PircBotX;
@@ -19,6 +20,8 @@ public class Musicbot extends ListenerAdapter {
     private final YoutubeService youtubeService;
     private final LastFmService lastFmService;
     private final TellMessageHandler tellMessageHandler;
+    private final UrbanDictionaryService urbanDictionaryService;
+    private final HelpService helpService;
 
     private final String BOT_NAME;
     private final String BOT_VERSION = "0.6";
@@ -27,8 +30,7 @@ public class Musicbot extends ListenerAdapter {
     private final String CHANNEL_NAME;
     private final ReminderHandler reminderHandler;
 
-
-    public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, Config config) {
+    public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, UrbanDictionaryService urbanDictionaryService, Config config) {
         this.youtubeService = youtubeService;
         this.lastFmService = lastFmService;
         this.tellMessageHandler = tellMessageHandler;
@@ -37,9 +39,11 @@ public class Musicbot extends ListenerAdapter {
         this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
         this.CHANNEL_NAME = config.getProperty("channel.name");
         this.reminderHandler = new ReminderHandler(config.getDbConnection());
-        reminderHandler.init(); // First, initialize reminders from the database
-        reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
-        reminderHandler.init(); // Finally, reinitialize reminders from the updated database
+            reminderHandler.init(); // First, initialize reminders from the database
+            reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
+            reminderHandler.init(); // Finally, reinitialize reminders from the updated database
+        this.urbanDictionaryService = urbanDictionaryService;
+        this.helpService = new HelpService();
     }
 
     public static void main(String[] args) throws SQLException {
@@ -47,8 +51,9 @@ public class Musicbot extends ListenerAdapter {
         YoutubeService youtubeService = new YoutubeService(config);
         LastFmService lastFmService = new LastFmService(config);
         TellMessageHandler tellMessageHandler = new TellMessageHandler(config.getDbConnection());
+        UrbanDictionaryService urbanDictionaryService = new UrbanDictionaryService(config);
 
-        Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, config);
+        Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, urbanDictionaryService, config);
 
         Configuration configuration = new Configuration.Builder()
                 .setName(botInstance.BOT_NAME)
@@ -71,7 +76,6 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
-
     @Override
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
@@ -86,12 +90,17 @@ public class Musicbot extends ListenerAdapter {
         Pattern urlPattern = Pattern.compile("(https?://[\\w.-]+\\.[\\w.-]+[\\w./?=&#%\\-\\(\\)]*)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = urlPattern.matcher(message);
 
-        if (message.startsWith(".np ")) {
+
+        if (message.startsWith(".help")) {
+            handleHelpCommand(event);
+        } else if (message.startsWith(".np ")) {
             handleNowPlayingCommand(event, message);
         } else if (message.startsWith(".in ")) {
             handleReminderCommand(event, message);
         } else if (message.startsWith(".yt ")) {
             handleYoutubeCommand(event, message);
+        } else if (message.startsWith(".ud ")) {
+            handleUrbanDictionaryCommand(event, message);
         } else {
             handleUrlFetching(event, matcher);
         }
@@ -112,6 +121,20 @@ public class Musicbot extends ListenerAdapter {
         String videoUrl = youtubeService.searchYoutube(query);
         if (videoUrl != null) {
             event.respondWith(videoUrl);
+        }
+    }
+
+    private void handleUrbanDictionaryCommand(GenericMessageEvent event, String message) {
+        String term = message.substring(4);
+        List<String> definitions = urbanDictionaryService.searchUrbanDictionary(term);
+        for (int i = 0; i < definitions.size() && i < 4; i++) {
+            String definition = definitions.get(i);
+            if (!definition.trim().isEmpty()) {
+                event.respondWith(definition);
+            }
+        }
+        if (definitions.size() > 4) {
+            event.respondWith("... [message truncated due to length]");
         }
     }
 
@@ -188,4 +211,19 @@ public class Musicbot extends ListenerAdapter {
             reminderHandler.processReminderRequest(sender, message, sender, event);
         }
     }
+
+    private void handleHelpCommand(GenericMessageEvent event) {
+        User user = event.getUser();
+        if(user == null) {
+            return;
+        }
+
+        if (event instanceof MessageEvent messageEvent) {
+            messageEvent.getChannel().send().message("I will send you a list of all my commands per DM");
+            helpService.sendHelp(user, event.getBot());
+        } else if (event instanceof PrivateMessageEvent) {
+            helpService.sendHelp(user, event.getBot());
+        }
+    }
+
 }
