@@ -15,17 +15,27 @@ import java.net.http.HttpResponse;
 import java.util.Scanner;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.*;
 
 public class LastFmService {
     private final String apiKey;
+    private final Connection dbConnection;
 
     public LastFmService(Config config) {
         this.apiKey = config.getProperty("lfm.apiKey");
+        this.dbConnection = config.getDbConnection();
     }
 
     public String getCurrentTrack(String username) {
+        // Check if username is an IRC username or a Last.fm username
+        String lastfmUsername = getLastFmUsernameFromDb(username);
+        if (lastfmUsername == null) {
+            lastfmUsername = username;
+        }
+        lastfmUsername = URLEncoder.encode(lastfmUsername, StandardCharsets.UTF_8);
+
         String url = String.format("http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=%s&api_key=%s&format=json",
-                username, apiKey);
+                lastfmUsername, apiKey);
 
         try {
             URI uri = new URI(url);
@@ -44,7 +54,7 @@ public class LastFmService {
                 JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
 
                 if (jsonObject.has("error")) {
-                    int errorCode = jsonObject.get("error").getAsJsonObject().get("code").getAsInt();
+                    int errorCode = jsonObject.get("error").getAsInt();  // get the error code as an integer
                     String errorMessage = jsonObject.get("message").getAsString();
                     return "Error: " + errorCode + " - " + errorMessage;
                 } else {
@@ -143,5 +153,35 @@ public class LastFmService {
             e.printStackTrace();
         }
         return "";
+    }
+
+    public void saveLastFmUsername(String ircUsername, String lastfmUsername) {
+        try {
+            String sql = "INSERT INTO lastfmnames (username, lastfm_username) VALUES (?, ?) ON CONFLICT (username) DO UPDATE SET lastfm_username = ?";
+            PreparedStatement stmt = dbConnection.prepareStatement(sql);
+            stmt.setString(1, ircUsername);
+            stmt.setString(2, lastfmUsername);
+            stmt.setString(3, lastfmUsername);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getLastFmUsernameFromDb(String username) {
+        try {
+            String sql = "SELECT lastfm_username FROM lastfmnames WHERE username = ?";
+            PreparedStatement stmt = dbConnection.prepareStatement(sql);
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("lastfm_username");
+            } else {
+                return null;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

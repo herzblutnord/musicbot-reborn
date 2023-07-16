@@ -24,7 +24,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
 
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.7";
+    private final String BOT_VERSION = "0.7.1";
     private final String SERVER_NAME;
     private final int SERVER_PORT;
     private final String CHANNEL_NAME;
@@ -93,7 +93,7 @@ public class Musicbot extends ListenerAdapter {
 
         if (message.startsWith(".help")) {
             handleHelpCommand(event);
-        } else if (message.startsWith(".np ")) {
+        } else if (message.startsWith(".np")) {
             handleNowPlayingCommand(event, message);
         } else if (message.startsWith(".in ")) {
             handleReminderCommand(event, message);
@@ -107,7 +107,24 @@ public class Musicbot extends ListenerAdapter {
     }
 
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {
-        String username = message.substring(4);
+        String ircUsername = event.getUser().getNick();
+        String username = null;
+
+        if (message.length() > 4) {
+            // Extract the username from the message if it's provided
+            username = message.substring(4);
+            lastFmService.saveLastFmUsername(ircUsername, username);
+        } else {
+            // If no Last.fm username was specified in the message, get it from the database
+            username = lastFmService.getLastFmUsernameFromDb(ircUsername);
+
+            // If the Last.fm username couldn't be retrieved from the database, there's nothing more to do
+            if (username == null) {
+                event.respondWith("No Last.fm username associated with " + ircUsername + ". Please provide your Last.fm username.");
+                return;
+            }
+        }
+
         try {
             String response = lastFmService.getCurrentTrack(username);
             event.respondWith(response);
@@ -115,6 +132,8 @@ public class Musicbot extends ListenerAdapter {
             e.printStackTrace();
         }
     }
+
+
 
     private void handleYoutubeCommand(GenericMessageEvent event, String message) {
         String query = message.substring(4);
