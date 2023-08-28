@@ -24,13 +24,17 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
 
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.7.1";
+    private final String BOT_VERSION = "0.7.3";
+    private final String BOT_NICKSERV_PW;
+    private final String BOT_NICKSERV_EMAIL;
     private final String SERVER_NAME;
     private final int SERVER_PORT;
     private final String CHANNEL_NAME;
     private final ReminderHandler reminderHandler;
+    private final Config config;
 
     public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, UrbanDictionaryService urbanDictionaryService, Config config) {
+        this.config = config;
         this.youtubeService = youtubeService;
         this.lastFmService = lastFmService;
         this.tellMessageHandler = tellMessageHandler;
@@ -44,6 +48,8 @@ public class Musicbot extends ListenerAdapter {
             reminderHandler.init(); // Finally, reinitialize reminders from the updated database
         this.urbanDictionaryService = urbanDictionaryService;
         this.helpService = new HelpService();
+        this.BOT_NICKSERV_PW = config.getProperty("nickserv.pw");
+        this.BOT_NICKSERV_EMAIL = config.getProperty("nickserv.email");
     }
 
     public static void main(String[] args) throws SQLException {
@@ -81,6 +87,17 @@ public class Musicbot extends ListenerAdapter {
         User user = event.getUser();
         if (user != null && user.getNick().equals(BOT_NAME)) {
             event.getChannel().send().message("Greetings from the depths, I'm " + BOT_NAME + ", your helpful water spirit! (Version " + BOT_VERSION + ")");
+        }
+
+        boolean isRegistered = config.isBotRegistered(SERVER_NAME);
+
+        if (isRegistered) {
+            // Send identify command to NickServ
+            event.getBot().sendIRC().message("NickServ", "IDENTIFY " + BOT_NICKSERV_PW);
+        } else {
+            // Register with NickServ and save to the database
+            event.getBot().sendIRC().message("NickServ", "REGISTER " + BOT_NICKSERV_PW + " " + BOT_NICKSERV_EMAIL);
+            config.setBotRegistered(SERVER_NAME);
         }
     }
 
