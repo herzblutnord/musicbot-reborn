@@ -31,12 +31,16 @@ public class TellMessageHandler {
         String recipient;
         String message;
         Timestamp timestamp;
+        String server;
+        String channel;
 
-        Message(String sender, String recipient, String message, Timestamp timestamp) {
+        Message(String sender, String recipient, String message, Timestamp timestamp, String server, String channel) {
             this.sender = sender;
             this.recipient = recipient;
             this.message = message;
             this.timestamp = timestamp;
+            this.server = server;
+            this.channel = channel;
         }
     }
 
@@ -45,13 +49,19 @@ public class TellMessageHandler {
         PreparedStatement statement = db.prepareStatement(sql);
         ResultSet rs = statement.executeQuery();
         while (rs.next()) {
-            Message message = new Message(rs.getString("sender"), rs.getString("recipient"),
-                    rs.getString("message"), rs.getTimestamp("timestamp"));
+            Message message = new Message(
+                    rs.getString("sender"),
+                    rs.getString("recipient"),
+                    rs.getString("message"),
+                    rs.getTimestamp("timestamp"),
+                    rs.getString("server"),
+                    rs.getString("channel")
+            );
             messageList.add(message);
         }
     }
 
-    public void handleTellMessage(String sender, String messageText, GenericMessageEvent event) {
+    public void handleTellMessage(String sender, String messageText, GenericMessageEvent event, String server, String channel) {
         String[] parts = messageText.split(" ", 3);
         if (parts.length < 3) {
             event.respond("Invalid .tell command. Usage: .tell <nick> <message>");
@@ -78,8 +88,8 @@ public class TellMessageHandler {
 
                 // Save to DB and memory
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-                saveMessageToDatabase(sender, recipient, message, timestamp);
-                messageList.add(new Message(sender, recipient, message, timestamp));
+                saveMessageToDatabase(sender, recipient, message, timestamp, server, channel);
+                messageList.add(new Message(sender, recipient, message, timestamp, server, channel));
                 if (event instanceof MessageEvent messageEvent) {
                     event.getBot().sendIRC().message(messageEvent.getChannel().getName(), "Your message will be delivered the next time " + recipient + " is here!");
                 } else {
@@ -91,12 +101,14 @@ public class TellMessageHandler {
         }
     }
 
-    public void handleRegularMessage(String sender, GenericMessageEvent event) {
+    public void handleRegularMessage(String sender, GenericMessageEvent event, String currentServer, String currentChannel) {
         Iterator<Message> iter = messageList.iterator();
         List<Message> userMessages = new ArrayList<>();
         while (iter.hasNext()) {
             Message message = iter.next();
-            if (message.recipient.equalsIgnoreCase(sender)) {
+            if (message.recipient.equalsIgnoreCase(sender)
+                    && message.server.equals(currentServer)
+                    && message.channel.equals(currentChannel)) {
                 userMessages.add(message);
                 iter.remove();
             }
@@ -152,13 +164,15 @@ public class TellMessageHandler {
         return rs.next() ? rs.getInt("total") : 0;
     }
 
-    private void saveMessageToDatabase(String sender, String recipient, String message, Timestamp timestamp) throws SQLException {
-        String sql = "INSERT INTO tellnew (sender, recipient, message, timestamp) VALUES (?, ?, ?, ?)";
+    private void saveMessageToDatabase(String sender, String recipient, String message, Timestamp timestamp, String server, String channel) throws SQLException {
+        String sql = "INSERT INTO tellnew (sender, recipient, message, timestamp, server, channel) VALUES (?, ?, ?, ?, ?, ?)";
         PreparedStatement statement = db.prepareStatement(sql);
         statement.setString(1, sender);
         statement.setString(2, recipient);
         statement.setString(3, message);
         statement.setTimestamp(4, timestamp);
+        statement.setString(5, server);
+        statement.setString(6, channel);
         statement.execute();
     }
 

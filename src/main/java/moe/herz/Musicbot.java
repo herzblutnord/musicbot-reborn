@@ -269,10 +269,13 @@ public class Musicbot extends ListenerAdapter {
         }
         String messageText = event.getMessage();
         String sender = user.getNick();
+        String currentChannel = event.getChannel().getName();
+        String currentServer = SERVER_NAME;
+
         if (messageText.startsWith(".tell")) {
-            tellMessageHandler.handleTellMessage(sender, messageText, event);
+            tellMessageHandler.handleTellMessage(sender, messageText, event, currentServer, currentChannel);
         } else {
-            tellMessageHandler.handleRegularMessage(sender, event);
+            tellMessageHandler.handleRegularMessage(sender, event, currentServer, currentChannel);
         }
     }
 
