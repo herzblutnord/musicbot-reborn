@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.util.List;
+import java.util.Collections;
 
 public class YoutubeService {
     private YouTube youtube;
@@ -31,10 +32,10 @@ public class YoutubeService {
 
     public String searchYoutube(String query) {
         try {
-            YouTube.Search.List search = youtube.search().list("id,snippet");
+            YouTube.Search.List search = youtube.search().list(Collections.singletonList("id,snippet"));
             search.setKey(apiKey);
             search.setQ(query);
-            search.setType("video");
+            search.setType(Collections.singletonList("video"));
             search.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url, snippet/channelTitle)");
             search.setMaxResults(1L);
 
@@ -56,9 +57,9 @@ public class YoutubeService {
 
     public String getVideoDetails(String videoId) {
         try {
-            YouTube.Videos.List request = youtube.videos().list("snippet,statistics");
+            YouTube.Videos.List request = youtube.videos().list(Collections.singletonList("snippet,statistics"));
             request.setKey(apiKey);
-            request.setId(videoId);
+            request.setId(Collections.singletonList(videoId));
 
             VideoListResponse response = request.execute();
             List<Video> videos = response.getItems();
