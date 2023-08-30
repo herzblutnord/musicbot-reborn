@@ -12,9 +12,13 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class UrbanDictionaryService {
 
     private final String apiKey;
+    private static final Logger logger = LoggerFactory.getLogger(UrbanDictionaryService.class);
 
     public UrbanDictionaryService(Config config) {
         this.apiKey = config.getProperty("ud.apiKey");
@@ -43,7 +47,7 @@ public class UrbanDictionaryService {
                 return Collections.singletonList("Error: Response body is null");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
             return Collections.singletonList("Error connecting to Urban Dictionary API.");
         }
     }

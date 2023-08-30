@@ -8,17 +8,21 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Config {
     private final Properties properties;
     private Connection db;
+    private static final Logger logger = LoggerFactory.getLogger(Config.class);
+
 
     public Config() {
         properties = new Properties();
         try (FileInputStream in = new FileInputStream("./config2.properties")) {
             properties.load(in);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         setupDatabaseConnection();
     }
@@ -28,7 +32,7 @@ public class Config {
         try {
             db = DriverManager.getConnection(databaseURL, properties);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -48,7 +52,7 @@ public class Config {
                 return rs.getBoolean("is_registered");
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         return false;
     }
@@ -58,7 +62,7 @@ public class Config {
             stmt.setString(1, serverName);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 

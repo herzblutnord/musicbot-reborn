@@ -5,6 +5,8 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import org.apache.commons.text.StringEscapeUtils;
 import com.google.api.client.json.gson.GsonFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.text.NumberFormat;
@@ -13,6 +15,7 @@ import java.util.List;
 public class YoutubeService {
     private YouTube youtube;
     private final String apiKey;
+    private static final Logger logger = LoggerFactory.getLogger(YoutubeService.class);
 
     public YoutubeService(Config config) {
         this.apiKey = config.getProperty("yt.apiKey");
@@ -22,7 +25,7 @@ public class YoutubeService {
                     .setApplicationName("musicbot2")
                     .build();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -46,7 +49,7 @@ public class YoutubeService {
                 return getVideoDetails(videoId);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         return null;
     }
@@ -78,7 +81,7 @@ public class YoutubeService {
                         String.format("%s | Channel: %s | Views: %s | ", title, channel, formattedViews) + "https://www.youtube.com/watch?v=" + videoId;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         return null;
     }

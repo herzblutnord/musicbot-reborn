@@ -6,7 +6,7 @@
 
     <groupId>moe.herz</groupId>
     <artifactId>musicbot</artifactId>
-    <version>0.7.4</version>
+    <version>0.7.5</version>
 
     <properties>
         <maven.compiler.source>20</maven.compiler.source>
@@ -78,9 +78,9 @@
         </dependency>
 
         <dependency>
-            <groupId>net.sourceforge.htmlunit</groupId>
+            <groupId>org.htmlunit</groupId>
             <artifactId>htmlunit</artifactId>
-             <version>2.70.0</version>
+            <version>3.5.0</version>
         </dependency>
 
         <dependency>

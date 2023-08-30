@@ -20,6 +20,8 @@ import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Musicbot extends ListenerAdapter {
     private final YoutubeService youtubeService;
@@ -29,7 +31,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.7.4";
+    private final String BOT_VERSION = "0.7.5";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String SERVER_NAME;
@@ -37,6 +39,7 @@ public class Musicbot extends ListenerAdapter {
     private final String CHANNEL_NAME;
     private final ReminderHandler reminderHandler;
     private final Config config;
+    private static final Logger logger = LoggerFactory.getLogger(Musicbot.class);
 
     public Musicbot(YoutubeService youtubeService, LastFmService lastFmService, TellMessageHandler tellMessageHandler, UrbanDictionaryService urbanDictionaryService, Config config) {
         this.config = config;
@@ -64,7 +67,6 @@ public class Musicbot extends ListenerAdapter {
         TellMessageHandler tellMessageHandler = new TellMessageHandler(config.getDbConnection());
         UrbanDictionaryService urbanDictionaryService = new UrbanDictionaryService(config);
 
-
         Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, urbanDictionaryService, config);
         botInstance.loadIgnoredUrls("ignored_urls.txt");
 
@@ -85,7 +87,7 @@ public class Musicbot extends ListenerAdapter {
 
             bot.startBot();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -114,7 +116,6 @@ public class Musicbot extends ListenerAdapter {
         Pattern urlPattern = Pattern.compile("(https?://[\\w.-]+\\.[\\w.-]+[\\w./?=&#%\\-\\(\\)]*)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = urlPattern.matcher(message);
 
-
         if (message.startsWith(".help")) {
             handleHelpCommand(event);
         } else if (message.startsWith(".np")) {
@@ -135,7 +136,7 @@ public class Musicbot extends ListenerAdapter {
 
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {
         String ircUsername = event.getUser().getNick();
-        String username = null;
+        String username;
 
         if (message.length() > 4) {
             // Extract the username from the message if it's provided
@@ -156,11 +157,9 @@ public class Musicbot extends ListenerAdapter {
             String response = lastFmService.getCurrentTrack(username);
             event.respondWith(response);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
-
-
 
     private void handleYoutubeCommand(GenericMessageEvent event, String message) {
         String query = message.substring(4);
@@ -174,7 +173,7 @@ public class Musicbot extends ListenerAdapter {
         try {
             ignoredUrls = new HashSet<>(Files.readAllLines(Paths.get(filePath)));
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 

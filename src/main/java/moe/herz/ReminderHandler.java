@@ -1,6 +1,8 @@
 package moe.herz;
 
 import org.pircbotx.hooks.types.GenericMessageEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.time.Instant;
@@ -22,6 +24,7 @@ public class ReminderHandler {
     private final PriorityBlockingQueue<Reminder> reminderQueue;
     private final ConcurrentHashMap<Long, Reminder> reminders;
     private final Connection dbConnection;
+    private static final Logger logger = LoggerFactory.getLogger(ReminderHandler.class);
 
     public ReminderHandler(Connection dbConnection) {
         this.dbConnection = dbConnection;
@@ -49,7 +52,7 @@ public class ReminderHandler {
                 reminders.put(id, reminder);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -152,7 +155,7 @@ public class ReminderHandler {
                 //System.out.println("New reminder added. ID: " + id + ", Time: " + remindAt); // Debug logging
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -179,7 +182,7 @@ public class ReminderHandler {
                 reminderMessage = sender + ": " + message;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         return new SimpleEntry<>(reminderMessage, channel);
     }
@@ -195,7 +198,7 @@ public class ReminderHandler {
                 pstmt.setLong(1, reminderId);
                 pstmt.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error("An error occurred", e);
             }
         }
     }

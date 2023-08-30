@@ -5,11 +5,15 @@ import org.pircbotx.hooks.types.GenericMessageEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import java.sql.*;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TellMessageHandler {
     private static final int MAX_MESSAGES_PER_USER = 10;
     private static final int MAX_MESSAGES_TO_SINGLE_USER = 5;
     private static final int MAX_MESSAGES_IN_CHANNEL = 3;
+    private static final Logger logger = LoggerFactory.getLogger(TellMessageHandler.class);
+
 
     private final Connection db;
     private final LinkedList<Message> messageList;
@@ -76,14 +80,13 @@ public class TellMessageHandler {
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                 saveMessageToDatabase(sender, recipient, message, timestamp);
                 messageList.add(new Message(sender, recipient, message, timestamp));
-                if (event instanceof MessageEvent) {
-                    MessageEvent messageEvent = (MessageEvent) event;
+                if (event instanceof MessageEvent messageEvent) {
                     event.getBot().sendIRC().message(messageEvent.getChannel().getName(), "Your message will be delivered the next time " + recipient + " is here!");
                 } else {
                     event.respond("Your message will be delivered the next time " + recipient + " is here!");
                 }
         } catch (SQLException e) {
-                e.printStackTrace();
+                logger.error("An error occurred", e);
             }
         }
     }
@@ -100,8 +103,7 @@ public class TellMessageHandler {
         }
 
         if (!userMessages.isEmpty()) {
-            if (event instanceof MessageEvent) {
-                MessageEvent messageEvent = (MessageEvent) event;
+            if (event instanceof MessageEvent messageEvent) {
                 event.getBot().sendIRC().message(messageEvent.getChannel().getName(), sender + ", you have postponed messages:");
             } else {
                 event.respond(sender + ", you have postponed messages:");
@@ -114,8 +116,7 @@ public class TellMessageHandler {
         int counter = 0;
         for (Message message : messages) {
             String formattedMessage = message.sender + " (" + pTime.format(message.timestamp) + "): " + message.message;
-            if (event instanceof MessageEvent) {
-                MessageEvent messageEvent = (MessageEvent) event;
+            if (event instanceof MessageEvent messageEvent) {
                 if (counter < MAX_MESSAGES_IN_CHANNEL) {
                     event.getBot().sendIRC().message(messageEvent.getChannel().getName(), formattedMessage);
                     counter++;
@@ -171,7 +172,7 @@ public class TellMessageHandler {
             statement.setTimestamp(4, message.timestamp);
             statement.execute();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 }

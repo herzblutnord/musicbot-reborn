@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +22,7 @@ import java.sql.*;
 public class LastFmService {
     private final String apiKey;
     private final Connection dbConnection;
+    private static final Logger logger = LoggerFactory.getLogger(LastFmService.class);
 
     public LastFmService(Config config) {
         this.apiKey = config.getProperty("lfm.apiKey");
@@ -34,7 +37,7 @@ public class LastFmService {
         }
         lastfmUsername = URLEncoder.encode(lastfmUsername, StandardCharsets.UTF_8);
 
-        String url = String.format("http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=%s&api_key=%s&format=json",
+        String url = String.format("https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=%s&api_key=%s&format=json",
                 lastfmUsername, apiKey);
 
         try {
@@ -66,7 +69,7 @@ public class LastFmService {
                         if (trackElement.isJsonArray()) {
                             JsonArray trackArray = trackElement.getAsJsonArray();
 
-                            if (trackArray.size() > 0) {
+                            if (!trackArray.isEmpty()) {
                                 JsonObject trackObject = trackArray.get(0).getAsJsonObject();
                                 boolean nowPlaying = trackObject.has("@attr") && trackObject.getAsJsonObject("@attr").has("nowplaying");
 
@@ -105,7 +108,7 @@ public class LastFmService {
                 }
             }
         } catch (URISyntaxException | IOException | InterruptedException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
             return "Error retrieving last.fm data";
         }
     }
@@ -114,7 +117,7 @@ public class LastFmService {
         String artistEncoded = URLEncoder.encode(artist, StandardCharsets.UTF_8);
 
         // Using artist.gettoptags method in URL
-        String url = String.format("http://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=%s&api_key=%s&format=json",
+        String url = String.format("https://ws.audioscrobbler.com/2.0/?method=artist.gettoptags&artist=%s&api_key=%s&format=json",
                 artistEncoded, apiKey);
         try {
             URI uri = new URI(url);
@@ -150,7 +153,7 @@ public class LastFmService {
                 }
             }
         } catch (URISyntaxException | IOException | InterruptedException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
         return "";
     }
@@ -164,7 +167,7 @@ public class LastFmService {
             stmt.setString(3, lastfmUsername);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
         }
     }
 
@@ -180,7 +183,7 @@ public class LastFmService {
                 return null;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("An error occurred", e);
             return null;
         }
     }
