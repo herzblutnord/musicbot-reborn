@@ -5,6 +5,11 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import javax.net.ssl.SSLSocketFactory;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.io.IOException;
 
 import org.pircbotx.Configuration;
 import org.pircbotx.PircBotX;
@@ -22,7 +27,7 @@ public class Musicbot extends ListenerAdapter {
     private final TellMessageHandler tellMessageHandler;
     private final UrbanDictionaryService urbanDictionaryService;
     private final HelpService helpService;
-
+    private Set<String> ignoredUrls;
     private final String BOT_NAME;
     private final String BOT_VERSION = "0.7.3";
     private final String BOT_NICKSERV_PW;
@@ -59,7 +64,9 @@ public class Musicbot extends ListenerAdapter {
         TellMessageHandler tellMessageHandler = new TellMessageHandler(config.getDbConnection());
         UrbanDictionaryService urbanDictionaryService = new UrbanDictionaryService(config);
 
+
         Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, urbanDictionaryService, config);
+        botInstance.loadIgnoredUrls("ignored_urls.txt");
 
         Configuration configuration = new Configuration.Builder()
                 .setName(botInstance.BOT_NAME)
@@ -118,6 +125,9 @@ public class Musicbot extends ListenerAdapter {
             handleYoutubeCommand(event, message);
         } else if (message.startsWith(".ud ")) {
             handleUrbanDictionaryCommand(event, message);
+        } else if (message.startsWith(".reload")) {
+            loadIgnoredUrls("ignored_urls.txt");
+            event.respondWith("Ignore list reloaded.");
         } else {
             handleUrlFetching(event, matcher);
         }
@@ -160,6 +170,14 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
+    private void loadIgnoredUrls(String filePath) {
+        try {
+            ignoredUrls = new HashSet<>(Files.readAllLines(Paths.get(filePath)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void handleUrbanDictionaryCommand(GenericMessageEvent event, String message) {
         String term = message.substring(4);
         List<String> definitions = urbanDictionaryService.searchUrbanDictionary(term);
@@ -175,9 +193,20 @@ public class Musicbot extends ListenerAdapter {
     }
 
     private void handleUrlFetching(GenericMessageEvent event, Matcher matcher) {
-
         while (matcher.find()) {
             String url = matcher.group(1);
+
+            boolean shouldIgnore = false;
+            for (String ignoredUrl : ignoredUrls) {
+                if (url.startsWith(ignoredUrl)) {
+                    shouldIgnore = true;
+                    break;
+                }
+            }
+
+            if (shouldIgnore) {
+                continue;
+            }
 
             String videoId = null;
 
