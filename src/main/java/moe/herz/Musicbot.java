@@ -178,14 +178,24 @@ public class Musicbot extends ListenerAdapter {
 
         while (matcher.find()) {
             String url = matcher.group(1);
-            int spaceIndex = url.indexOf(' ');
-            if (spaceIndex != -1) {
-                url = url.substring(0, spaceIndex);
+
+            String videoId = null;
+
+            if (url.contains("youtube.com/watch?v=")) {
+                Pattern pattern = Pattern.compile("v=([^&]*)");
+                Matcher videoMatcher = pattern.matcher(url);
+                if (videoMatcher.find()) {
+                    videoId = videoMatcher.group(1);
+                }
+            } else if (url.contains("youtu.be/")) {
+                Pattern pattern = Pattern.compile("youtu\\.be/([^?&]*)");
+                Matcher videoMatcher = pattern.matcher(url);
+                if (videoMatcher.find()) {
+                    videoId = videoMatcher.group(1);
+                }
             }
 
-            // For youtube.com/watch?v= and youtu.be/ links, get and send video details
-            if (url.contains("youtube.com/watch?v=") || url.contains("youtu.be/")) {
-                String videoId = url.contains("youtube.com/watch?v=") ? url.substring(url.indexOf("=") + 1) : url.substring(url.indexOf("be/") + 3);
+            if (videoId != null) {
                 String videoDetails = youtubeService.getVideoDetails(videoId);
                 if (videoDetails != null) {
                     if (event instanceof MessageEvent messageEvent) {

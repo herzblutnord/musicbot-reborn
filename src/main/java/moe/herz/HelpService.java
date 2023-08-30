@@ -16,7 +16,7 @@ public class HelpService {
         );
         commands.put(
                 ".np <last.fm username>",
-                "Displays the most recent song played by the specified Last.fm username."
+                "Displays the most recent song played by the specified Last.fm username. You only need to provide your Last.fm username once."
         );
         commands.put(
                 ".in <duration (w/d/h/m/s)> <message>",
