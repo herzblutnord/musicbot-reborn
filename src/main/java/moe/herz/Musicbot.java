@@ -31,7 +31,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.7.5";
+    private final String BOT_VERSION = "0.8";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String SERVER_NAME;
@@ -113,7 +113,7 @@ public class Musicbot extends ListenerAdapter {
     @Override
     public void onGenericMessage(GenericMessageEvent event) {
         String message = event.getMessage();
-        Pattern urlPattern = Pattern.compile("(https?://[\\w.-]+\\.[\\w.-]+[\\w./?=&#%\\-\\(\\)]*)", Pattern.CASE_INSENSITIVE);
+        Pattern urlPattern = Pattern.compile("(https?://[\\w.-]+\\.[\\w.-]+[\\w./?=&#%\\-()@]*)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = urlPattern.matcher(message);
 
         if (message.startsWith(".help")) {
@@ -194,6 +194,7 @@ public class Musicbot extends ListenerAdapter {
     private void handleUrlFetching(GenericMessageEvent event, Matcher matcher) {
         while (matcher.find()) {
             String url = matcher.group(1);
+            //System.out.println("Matcher found URL: " + url);  // Debug line
 
             boolean shouldIgnore = false;
             for (String ignoredUrl : ignoredUrls) {
@@ -202,7 +203,6 @@ public class Musicbot extends ListenerAdapter {
                     break;
                 }
             }
-
             if (shouldIgnore) {
                 continue;
             }
@@ -221,6 +221,26 @@ public class Musicbot extends ListenerAdapter {
                 if (videoMatcher.find()) {
                     videoId = videoMatcher.group(1);
                 }
+            } else if (url.contains("youtube.com/playlist?list=")) {
+                Pattern pattern = Pattern.compile("list=([^&]*)");
+                Matcher playlistMatcher = pattern.matcher(url);
+                if (playlistMatcher.find()) {
+                    String playlistId = playlistMatcher.group(1);
+                    String playlistDetails = youtubeService.getPlaylistDetails(playlistId);
+                    if (playlistDetails != null) {
+                        event.respondWith(playlistDetails);
+                    }
+                }
+        } else if (url.contains("youtube.com/channel/")) {
+                Pattern pattern = Pattern.compile("channel/([a-zA-Z0-9_-]+)");
+                Matcher channelMatcher = pattern.matcher(url);
+                if (channelMatcher.find()) {
+                    String channelId = channelMatcher.group(1);
+                    String channelDetails = youtubeService.getChannelDetails(channelId);
+                    if (channelDetails != null) {
+                        event.respondWith(channelDetails);
+                    }
+                }
             }
 
             if (videoId != null) {
@@ -232,7 +252,7 @@ public class Musicbot extends ListenerAdapter {
                 }
             } else {
                 // Skip non-HTML files
-                String[] skippedExtensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".mp4", ".mp3", ".wav", ".ogg", ".flac", ".mkv", ".avi", ".flv"};
+                String[] skippedExtensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".webm", ".mp4", ".mp3", ".wav", ".ogg", ".flac", ".mkv", ".avi", ".flv"};
                 boolean skip = false;
                 for (String extension : skippedExtensions) {
                     if (url.toLowerCase().endsWith(extension)) {

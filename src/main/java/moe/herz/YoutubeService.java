@@ -12,6 +12,10 @@ import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Collections;
+import java.io.IOException;
+
+import com.google.api.services.youtube.model.ChannelListResponse;
+import com.google.api.services.youtube.model.Channel;
 
 public class YoutubeService {
     private YouTube youtube;
@@ -80,6 +84,50 @@ public class YoutubeService {
 
                 return //"https://www.youtube.com/watch?v=" + videoId
                         String.format("%s | Channel: %s | Views: %s | ", title, channel, formattedViews) + "https://www.youtube.com/watch?v=" + videoId;
+            }
+        } catch (Exception e) {
+            logger.error("An error occurred", e);
+        }
+        return null;
+    }
+
+    public String getPlaylistDetails(String playlistId) {
+        try {
+            YouTube.Playlists.List request = youtube.playlists().list(Collections.singletonList("snippet,contentDetails"));
+            request.setKey(apiKey);
+            request.setId(Collections.singletonList(playlistId));
+
+            PlaylistListResponse response = request.execute();
+            List<Playlist> playlists = response.getItems();
+
+            if (!playlists.isEmpty()) {
+                Playlist playlist = playlists.get(0);
+                String title = playlist.getSnippet().getTitle();
+                Long itemCount = playlist.getContentDetails().getItemCount();
+
+                return String.format("YouTube Playlist | %s | Number of Videos: %d", title, itemCount);
+            }
+        } catch (Exception e) {
+            logger.error("An error occurred", e);
+        }
+        return null;
+    }
+
+    public String getChannelDetails(String channelId) {
+        try {
+            YouTube.Channels.List request = youtube.channels().list(Collections.singletonList("snippet,statistics"));
+            request.setKey(apiKey);
+            request.setId(Collections.singletonList(channelId));
+
+            ChannelListResponse response = request.execute();
+            List<Channel> channels = response.getItems();
+
+            if (!channels.isEmpty()) {
+                Channel channel = channels.get(0);
+                String title = channel.getSnippet().getTitle();
+                BigInteger subscriberCount = channel.getStatistics().getSubscriberCount();
+
+                return String.format("%s | Number of Followers: %d", title, subscriberCount);
             }
         } catch (Exception e) {
             logger.error("An error occurred", e);

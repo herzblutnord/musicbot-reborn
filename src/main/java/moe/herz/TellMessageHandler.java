@@ -45,7 +45,7 @@ public class TellMessageHandler {
     }
 
     private void loadMessagesFromDatabase() throws SQLException {
-        String sql = "SELECT sender, recipient, message, timestamp FROM tellnew";
+        String sql = "SELECT sender, recipient, message, timestamp, server, channel FROM tellnew";
         PreparedStatement statement = db.prepareStatement(sql);
         ResultSet rs = statement.executeQuery();
         while (rs.next()) {
