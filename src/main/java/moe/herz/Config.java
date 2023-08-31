@@ -15,7 +15,7 @@ public class Config {
     private final Properties properties;
     private Connection db;
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
-
+    public String[] CHANNEL_NAMES;
 
     public Config() {
         properties = new Properties();
@@ -24,6 +24,7 @@ public class Config {
         } catch (IOException e) {
             logger.error("An error occurred", e);
         }
+        this.CHANNEL_NAMES = properties.getProperty("channel.name").split(",");
         setupDatabaseConnection();
     }
 

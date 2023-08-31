@@ -20,6 +20,8 @@ import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
+import org.pircbotx.hooks.events.ConnectEvent;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,12 +33,12 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.8";
+    private final String BOT_VERSION = "0.8.1";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String SERVER_NAME;
     private final int SERVER_PORT;
-    private final String CHANNEL_NAME;
+    public String[] CHANNEL_NAMES;
     private final ReminderHandler reminderHandler;
     private final Config config;
     private static final Logger logger = LoggerFactory.getLogger(Musicbot.class);
@@ -49,11 +51,11 @@ public class Musicbot extends ListenerAdapter {
         this.BOT_NAME = config.getProperty("bot.name");
         this.SERVER_NAME = config.getProperty("server.name");
         this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
-        this.CHANNEL_NAME = config.getProperty("channel.name");
+        this.CHANNEL_NAMES = config.CHANNEL_NAMES;  // Populate from Config
         this.reminderHandler = new ReminderHandler(config.getDbConnection());
-            reminderHandler.init(); // First, initialize reminders from the database
-            reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
-            reminderHandler.init(); // Finally, reinitialize reminders from the updated database
+        reminderHandler.init(); // First, initialize reminders from the database
+        reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
+        reminderHandler.init(); // Finally, reinitialize reminders from the updated database
         this.urbanDictionaryService = urbanDictionaryService;
         this.helpService = new HelpService();
         this.BOT_NICKSERV_PW = config.getProperty("nickserv.pw");
@@ -70,13 +72,17 @@ public class Musicbot extends ListenerAdapter {
         Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, urbanDictionaryService, config);
         botInstance.loadIgnoredUrls("ignored_urls.txt");
 
-        Configuration configuration = new Configuration.Builder()
+        Configuration.Builder builder = new Configuration.Builder()
                 .setName(botInstance.BOT_NAME)
                 .addServer(botInstance.SERVER_NAME, botInstance.SERVER_PORT)
-                .addAutoJoinChannel(botInstance.CHANNEL_NAME)
                 .addListener(botInstance)
-                .setSocketFactory(SSLSocketFactory.getDefault())
-                .buildConfiguration();
+                .setSocketFactory(SSLSocketFactory.getDefault());
+
+        for(String channel : config.CHANNEL_NAMES) {
+            builder.addAutoJoinChannel(channel.trim());
+        }
+
+        Configuration configuration = builder.buildConfiguration();
 
         try (PircBotX bot = new PircBotX(configuration)) {
             // Initialize reminderHandler and start the reminder sender thread
@@ -91,13 +97,17 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
+
     @Override
     public void onJoin(JoinEvent event) {
         User user = event.getUser();
         if (user != null && user.getNick().equals(BOT_NAME)) {
             event.getChannel().send().message("Greetings from the depths, I'm " + BOT_NAME + ", your helpful water spirit! (Version " + BOT_VERSION + ")");
         }
+    }
 
+    @Override
+    public void onConnect(ConnectEvent event) {
         boolean isRegistered = config.isBotRegistered(SERVER_NAME);
 
         if (isRegistered) {
@@ -109,6 +119,7 @@ public class Musicbot extends ListenerAdapter {
             config.setBotRegistered(SERVER_NAME);
         }
     }
+
 
     @Override
     public void onGenericMessage(GenericMessageEvent event) {
