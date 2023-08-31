@@ -124,6 +124,8 @@ public class Musicbot extends ListenerAdapter {
     @Override
     public void onGenericMessage(GenericMessageEvent event) {
         String message = event.getMessage();
+        User user = event.getUser();
+        String nick = user != null ? user.getNick() : "";
         Pattern urlPattern = Pattern.compile("(https?://[\\w.-]+\\.[\\w.-]+[\\w./?=&#%\\-()@]*)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = urlPattern.matcher(message);
 
@@ -138,12 +140,17 @@ public class Musicbot extends ListenerAdapter {
         } else if (message.startsWith(".ud ")) {
             handleUrbanDictionaryCommand(event, message);
         } else if (message.startsWith(".reload")) {
-            loadIgnoredUrls("ignored_urls.txt");
-            event.respondWith("Ignore list reloaded.");
+            if (nick != null && nick.equals("herzblutnord")) {
+                loadIgnoredUrls("ignored_urls.txt");
+                event.respondWith("Ignore list reloaded.");
+            } else {
+                event.respondWith("You're not my master! Hmpf!");
+            }
         } else {
             handleUrlFetching(event, matcher);
         }
     }
+
 
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {
         String ircUsername = event.getUser().getNick();
