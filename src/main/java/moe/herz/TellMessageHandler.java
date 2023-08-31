@@ -44,6 +44,13 @@ public class TellMessageHandler {
         }
     }
 
+    private String sanitizeMessage(String originalMessage) {
+        return originalMessage
+                .replaceAll("\\p{C}", "")  // Removes control characters
+                .replaceAll("\\p{Z}", "")  // Removes separator characters including zero-width space
+                .trim();  // Removes leading and trailing whitespace
+    }
+
     private void loadMessagesFromDatabase() throws SQLException {
         String sql = "SELECT sender, recipient, message, timestamp, server, channel FROM tellnew";
         PreparedStatement statement = db.prepareStatement(sql);
@@ -71,6 +78,15 @@ public class TellMessageHandler {
         String recipient = parts[1];
         String message = parts[2];
 
+        // Sanitize the message
+        String sanitizedMessage = sanitizeMessage(message);
+
+        // Check if the sanitized message is empty
+        if (sanitizedMessage.isEmpty()) {
+            event.respond("Why are you trying to send an empty message? Baka!");
+            return;
+        }
+
         if (recipient.equalsIgnoreCase(sender)) {
             event.respond("Aww, talking to yourself? How pitiful...");
         } else if (recipient.equalsIgnoreCase(event.getBot().getNick())) {
@@ -88,8 +104,8 @@ public class TellMessageHandler {
 
                 // Save to DB and memory
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-                saveMessageToDatabase(sender, recipient, message, timestamp, server, channel);
-                messageList.add(new Message(sender, recipient, message, timestamp, server, channel));
+                saveMessageToDatabase(sender, recipient, sanitizedMessage, timestamp, server, channel);  // Note the use of sanitizedMessage
+                messageList.add(new Message(sender, recipient, sanitizedMessage, timestamp, server, channel));  // Note the use of sanitizedMessage
                 if (event instanceof MessageEvent messageEvent) {
                     event.getBot().sendIRC().message(messageEvent.getChannel().getName(), "Your message will be delivered the next time " + recipient + " is here!");
                 } else {
