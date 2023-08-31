@@ -36,6 +36,7 @@ public class Musicbot extends ListenerAdapter {
     private final String BOT_VERSION = "0.8.1";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
+    private final String BOT_ADMIN;
     private final String SERVER_NAME;
     private final int SERVER_PORT;
     public String[] CHANNEL_NAMES;
@@ -60,6 +61,7 @@ public class Musicbot extends ListenerAdapter {
         this.helpService = new HelpService();
         this.BOT_NICKSERV_PW = config.getProperty("nickserv.pw");
         this.BOT_NICKSERV_EMAIL = config.getProperty("nickserv.email");
+        this.BOT_ADMIN = config.getProperty("bot.admin");
     }
 
     public static void main(String[] args) throws SQLException {
@@ -140,7 +142,7 @@ public class Musicbot extends ListenerAdapter {
         } else if (message.startsWith(".ud ")) {
             handleUrbanDictionaryCommand(event, message);
         } else if (message.startsWith(".reload")) {
-            if (nick != null && nick.equals("herzblutnord")) {
+            if (nick != null && nick.equals(BOT_ADMIN)) {
                 loadIgnoredUrls("ignored_urls.txt");
                 event.respondWith("Ignore list reloaded.");
             } else {
@@ -291,7 +293,7 @@ public class Musicbot extends ListenerAdapter {
     @Override
     public void onInvite(InviteEvent event) {
         User user = event.getUser();
-        if (user != null && user.getNick() != null && user.getNick().equals("herzblutnord")) {
+        if (user != null && user.getNick() != null && user.getNick().equals(BOT_ADMIN)) {
             String channelName = event.getChannel();
             if (channelName != null) {
                 event.getBot().sendIRC().joinChannel(channelName);
