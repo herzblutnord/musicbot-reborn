@@ -33,7 +33,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.8.1";
+    private final String BOT_VERSION = "0.8.1 rev. 2";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String BOT_ADMIN;
@@ -251,6 +251,21 @@ public class Musicbot extends ListenerAdapter {
                         event.respondWith(playlistDetails);
                     }
                 }
+            } else if (url.contains("youtube.com/@")) {
+                Pattern pattern = Pattern.compile("@([a-zA-Z0-9_-]+)");
+                Matcher usernameMatcher = pattern.matcher(url);
+                if (usernameMatcher.find()) {
+                    String username = usernameMatcher.group(1);
+                    // Use your new method to get the channel ID from the username
+                    String channelId = youtubeService.getChannelIdFromUsernameUsingSearch(username);
+                    if (channelId != null) {
+                        String channelDetails = youtubeService.getChannelDetails(channelId);
+                        if (channelDetails != null) {
+                            event.respondWith(channelDetails);
+                        }
+                    }
+                }
+
         } else if (url.contains("youtube.com/channel/")) {
                 Pattern pattern = Pattern.compile("channel/([a-zA-Z0-9_-]+)");
                 Matcher channelMatcher = pattern.matcher(url);

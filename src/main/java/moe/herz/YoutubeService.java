@@ -12,7 +12,7 @@ import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Collections;
-import java.io.IOException;
+import java.text.DecimalFormat;
 
 import com.google.api.services.youtube.model.ChannelListResponse;
 import com.google.api.services.youtube.model.Channel;
@@ -127,11 +127,58 @@ public class YoutubeService {
                 String title = channel.getSnippet().getTitle();
                 BigInteger subscriberCount = channel.getStatistics().getSubscriberCount();
 
-                return String.format("%s | Number of Followers: %d", title, subscriberCount);
+                // Convert subscriberCount to a human-readable format
+                String humanReadableSubCount = toHumanReadableFormat(subscriberCount);
+
+                return String.format("%s | Number of Followers: %s", title, humanReadableSubCount);
             }
         } catch (Exception e) {
             logger.error("An error occurred", e);
         }
         return null;
     }
+
+    // This method converts a BigInteger to a human-readable string
+    public String toHumanReadableFormat(BigInteger number) {
+        String[] suffix = {"", "K", "M", "B", "T"};
+        int i;
+        double num = number.doubleValue();
+        for (i = 0; i < suffix.length; i++) {
+            if (num < 1000) break;
+            num /= 1000;
+        }
+        DecimalFormat df = new DecimalFormat("#.#");
+        return df.format(num) + suffix[i];
+    }
+
+    public String getChannelIdFromUsernameUsingSearch(String username) {
+        try {
+            // Create a search.list() request
+            YouTube.Search.List searchRequest = youtube.search().list(Collections.singletonList("snippet"));
+
+            // Include the "@" symbol in the search query
+            searchRequest.setQ("@" + username);
+
+            searchRequest.setType(Collections.singletonList("channel"));
+            searchRequest.setKey(apiKey);
+
+            // Execute the request and get the response
+            SearchListResponse searchResponse = searchRequest.execute();
+            List<SearchResult> searchResultList = searchResponse.getItems();
+
+            // If no channels are found for the given username, return null
+            if (searchResultList == null || searchResultList.isEmpty()) {
+                return null;
+            }
+
+            // Since you've found that the first result is reliably the channel you're looking for,
+            // you can simply return its channel ID
+            return searchResultList.get(0).getSnippet().getChannelId();
+
+        } catch (Exception e) {
+            logger.error("An error occurred while retrieving the channel ID", e);
+            return null;
+        }
+    }
+
 }
