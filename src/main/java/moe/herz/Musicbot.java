@@ -33,7 +33,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.8.1 rev. 2";
+    private final String BOT_VERSION = "0.8.1 rev. 3";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String BOT_ADMIN;
@@ -212,9 +212,8 @@ public class Musicbot extends ListenerAdapter {
     }
 
     private void handleUrlFetching(GenericMessageEvent event, Matcher matcher) {
-        while (matcher.find()) {
+        if (matcher.find()) {
             String url = matcher.group(1);
-            //System.out.println("Matcher found URL: " + url);  // Debug line
 
             boolean shouldIgnore = false;
             for (String ignoredUrl : ignoredUrls) {
@@ -224,7 +223,7 @@ public class Musicbot extends ListenerAdapter {
                 }
             }
             if (shouldIgnore) {
-                continue;
+                return;  // Exit the method if the URL should be ignored
             }
 
             String videoId = null;
