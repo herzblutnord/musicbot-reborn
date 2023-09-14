@@ -33,7 +33,7 @@ public class Musicbot extends ListenerAdapter {
     private final HelpService helpService;
     private Set<String> ignoredUrls;
     private final String BOT_NAME;
-    private final String BOT_VERSION = "0.8.1 rev. 3";
+    private final String BOT_VERSION = "0.8.2 rev. 1";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String BOT_ADMIN;
@@ -99,15 +99,6 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
-
-    @Override
-    public void onJoin(JoinEvent event) {
-        User user = event.getUser();
-        if (user != null && user.getNick().equals(BOT_NAME)) {
-            event.getChannel().send().message("Greetings from the depths, I'm " + BOT_NAME + ", your helpful water spirit! (Version " + BOT_VERSION + ")");
-        }
-    }
-
     @Override
     public void onConnect(ConnectEvent event) {
         boolean isRegistered = config.isBotRegistered(SERVER_NAME);
@@ -125,6 +116,11 @@ public class Musicbot extends ListenerAdapter {
 
     @Override
     public void onGenericMessage(GenericMessageEvent event) {
+        // Ignore private/direct messages
+        if (event instanceof PrivateMessageEvent) {
+            return;
+        }
+
         String message = event.getMessage();
         User user = event.getUser();
         String nick = user != null ? user.getNick() : "";
@@ -133,6 +129,8 @@ public class Musicbot extends ListenerAdapter {
 
         if (message.startsWith(".help")) {
             handleHelpCommand(event);
+        } else if (message.startsWith("!botcheck")){
+            event.respondWith("Greetings from the depths, I'm " + BOT_NAME + ", your helpful water spirit! (Version " + BOT_VERSION + ")");
         } else if (message.startsWith(".np")) {
             handleNowPlayingCommand(event, message);
         } else if (message.startsWith(".in ")) {
@@ -141,7 +139,7 @@ public class Musicbot extends ListenerAdapter {
             handleYoutubeCommand(event, message);
         } else if (message.startsWith(".ud ")) {
             handleUrbanDictionaryCommand(event, message);
-        } else if (message.startsWith(".reload")) {
+        } else if (message.startsWith("!reload")) {
             if (nick != null && nick.equals(BOT_ADMIN)) {
                 loadIgnoredUrls("ignored_urls.txt");
                 event.respondWith("Ignore list reloaded.");

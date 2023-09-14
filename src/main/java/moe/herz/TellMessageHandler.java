@@ -46,8 +46,8 @@ public class TellMessageHandler {
 
     private String sanitizeMessage(String originalMessage) {
         return originalMessage
-                .replaceAll("\\p{C}", "")  // Removes control characters
-                .replaceAll("\\p{Z}", "")  // Removes separator characters including zero-width space
+                .replaceAll("[\\x00-\\x1F\\x7F]", "")  // Removes control characters
+                .replaceAll("[\\x80-\\x9F]", "")  // Removes control characters in extended set
                 .trim();  // Removes leading and trailing whitespace
     }
 

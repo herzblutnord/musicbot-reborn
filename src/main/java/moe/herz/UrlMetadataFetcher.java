@@ -1,5 +1,7 @@
 package moe.herz;
 
+import org.htmlunit.WebClient;
+import org.htmlunit.html.HtmlPage;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -7,8 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 
 public class UrlMetadataFetcher {
     private static final Logger logger = LoggerFactory.getLogger(UrlMetadataFetcher.class);
@@ -71,20 +73,28 @@ public class UrlMetadataFetcher {
 
                 int statusCode = connection.getResponseCode();
                 if (statusCode != 200) {
-                    return "Non-OK HTTP status";
+                    throw new IOException("Non-OK HTTP status");
                 }
 
                 String contentType = connection.getHeaderField("Content-Type");
                 if (contentType == null || !contentType.startsWith("text/html")) {
-                    return "Invalid content type";
+                    throw new IOException("Invalid content type");
                 }
 
                 Document doc = Jsoup.parse(connection.getInputStream(), null, url);
                 return doc.title();
 
             } catch (IOException e) {
-                logger.error("An error occurred", e);
-                return "Error connecting to URL";
+                logger.error("An error occurred while fetching via HttpURLConnection. Trying HtmlUnit fallback...", e);
+
+                try (final WebClient webClient = new WebClient()) {
+                    webClient.getOptions().setJavaScriptEnabled(false);  // Disable JavaScript
+                    final HtmlPage page = webClient.getPage(url);
+                    return page.getTitleText();
+                } catch (Exception ex) {
+                    logger.error("An error occurred while fetching via HtmlUnit", ex);
+                    return null;  // This will not return an error to the IRC users.
+                }
             }
 
         } catch (URISyntaxException e) {
@@ -92,7 +102,7 @@ public class UrlMetadataFetcher {
             return "Invalid URL";
         } catch (Exception e) {
             logger.error("An error occurred", e);
-            return "Error connecting to URL";
+            return null;  // This will not return an error to the IRC users.
         }
     }
 }
