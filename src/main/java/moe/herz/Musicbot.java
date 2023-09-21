@@ -3,7 +3,6 @@ package moe.herz;
 import java.sql.SQLException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-import javax.net.ssl.SSLSocketFactory;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -11,11 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
 
-import org.pircbotx.Configuration;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.ListenerAdapter;
 import org.pircbotx.hooks.types.GenericMessageEvent;
-import org.pircbotx.hooks.events.JoinEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
@@ -32,15 +29,15 @@ public class Musicbot extends ListenerAdapter {
     private final UrbanDictionaryService urbanDictionaryService;
     private final HelpService helpService;
     private Set<String> ignoredUrls;
-    private final String BOT_NAME;
+    final String BOT_NAME;
     private final String BOT_VERSION = "0.8.2 rev. 1";
     private final String BOT_NICKSERV_PW;
     private final String BOT_NICKSERV_EMAIL;
     private final String BOT_ADMIN;
-    private final String SERVER_NAME;
-    private final int SERVER_PORT;
+    final String SERVER_NAME;
+    final int SERVER_PORT;
     public String[] CHANNEL_NAMES;
-    private final ReminderHandler reminderHandler;
+    final ReminderHandler reminderHandler;
     private final Config config;
     private static final Logger logger = LoggerFactory.getLogger(Musicbot.class);
 
@@ -65,34 +62,16 @@ public class Musicbot extends ListenerAdapter {
     }
 
     public static void main(String[] args) throws SQLException {
-        Config config = new Config();
-        YoutubeService youtubeService = new YoutubeService(config);
-        LastFmService lastFmService = new LastFmService(config);
-        TellMessageHandler tellMessageHandler = new TellMessageHandler(config.getDbConnection());
-        UrbanDictionaryService urbanDictionaryService = new UrbanDictionaryService(config);
+        BotInitializer initializer = new BotInitializer();
+        PircBotX bot = initializer.initializeBot();
 
-        Musicbot botInstance = new Musicbot(youtubeService, lastFmService, tellMessageHandler, urbanDictionaryService, config);
-        botInstance.loadIgnoredUrls("ignored_urls.txt");
+        // Initialize reminderHandler and start the reminder sender thread
+        initializer.getReminderHandler().init();
+        Thread reminderSenderThread = new Thread(new ReminderSender(initializer.getReminderHandler(), bot));
 
-        Configuration.Builder builder = new Configuration.Builder()
-                .setName(botInstance.BOT_NAME)
-                .addServer(botInstance.SERVER_NAME, botInstance.SERVER_PORT)
-                .addListener(botInstance)
-                .setSocketFactory(SSLSocketFactory.getDefault());
+        reminderSenderThread.start();
 
-        for(String channel : config.CHANNEL_NAMES) {
-            builder.addAutoJoinChannel(channel.trim());
-        }
-
-        Configuration configuration = builder.buildConfiguration();
-
-        try (PircBotX bot = new PircBotX(configuration)) {
-            // Initialize reminderHandler and start the reminder sender thread
-            botInstance.reminderHandler.init();
-            Thread reminderSenderThread = new Thread(new ReminderSender(botInstance.reminderHandler, bot));
-
-            reminderSenderThread.start();
-
+        try {
             bot.startBot();
         } catch (Exception e) {
             logger.error("An error occurred", e);
@@ -112,7 +91,6 @@ public class Musicbot extends ListenerAdapter {
             config.setBotRegistered(SERVER_NAME);
         }
     }
-
 
     @Override
     public void onGenericMessage(GenericMessageEvent event) {
@@ -151,7 +129,6 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
-
     private void handleNowPlayingCommand(GenericMessageEvent event, String message) {
         String ircUsername = event.getUser().getNick();
         String username;
@@ -187,7 +164,7 @@ public class Musicbot extends ListenerAdapter {
         }
     }
 
-    private void loadIgnoredUrls(String filePath) {
+    void loadIgnoredUrls(String filePath) {
         try {
             ignoredUrls = new HashSet<>(Files.readAllLines(Paths.get(filePath)));
         } catch (IOException e) {
