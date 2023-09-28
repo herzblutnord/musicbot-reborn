@@ -23,7 +23,7 @@ public class YoutubeService {
     private static final Logger logger = LoggerFactory.getLogger(YoutubeService.class);
 
     public YoutubeService(Config config) {
-        this.apiKey = config.getProperty("yt.apiKey");
+        this.apiKey = config.getytapiKey();
         try {
             youtube = new YouTube.Builder(GoogleNetHttpTransport.newTrustedTransport(),
                     GsonFactory.getDefaultInstance(), null)

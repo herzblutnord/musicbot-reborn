@@ -15,7 +15,6 @@ public class Config {
     private final Properties properties;
     private Connection db;
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
-    public String[] CHANNEL_NAMES;
 
     public Config() {
         properties = new Properties();
@@ -24,7 +23,6 @@ public class Config {
         } catch (IOException e) {
             logger.error("An error occurred", e);
         }
-        this.CHANNEL_NAMES = properties.getProperty("channel.name").split(",");
         setupDatabaseConnection();
     }
 
@@ -37,8 +35,44 @@ public class Config {
         }
     }
 
-    public String getProperty(String key) {
-        return properties.getProperty(key);
+    public String getBotName() {
+        return properties.getProperty("bot.name", "DefaultBotName");
+    }
+
+    public String getServerName() {
+        return properties.getProperty("server.name", "DefaultServer");
+    }
+
+    public int getServerPort() {
+        return Integer.parseInt(properties.getProperty("server.port", "6667"));
+    }
+
+    public String[] getChannelNames() {
+        return properties.getProperty("channel.name", "").split(",");
+    }
+
+    public String getNickservPw() {
+        return properties.getProperty("nickserv.pw");
+    }
+
+    public String getNickservEmail() {
+        return properties.getProperty("nickserv.email");
+    }
+
+    public String getytapiKey() {
+        return properties.getProperty("yt.apiKey");
+    }
+
+    public String getlastfmapiKey() {
+        return properties.getProperty("lfm.apiKey");
+    }
+
+    public String getudapiKey() {
+        return properties.getProperty("ud.apiKey");
+    }
+
+    public String getBotAdmin() {
+        return properties.getProperty("bot.admin");
     }
 
     public Connection getDbConnection() {
@@ -66,5 +100,4 @@ public class Config {
             logger.error("An error occurred", e);
         }
     }
-
 }

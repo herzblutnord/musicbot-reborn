@@ -28,7 +28,7 @@ public class BotInitializer {
                 .addListener(botInstance)
                 .setSocketFactory(SSLSocketFactory.getDefault());
 
-        for(String channel : config.CHANNEL_NAMES) {
+        for(String channel : config.getChannelNames()) {
             builder.addAutoJoinChannel(channel.trim());
         }
 

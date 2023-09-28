@@ -46,19 +46,19 @@ public class Musicbot extends ListenerAdapter {
         this.youtubeService = youtubeService;
         this.lastFmService = lastFmService;
         this.tellMessageHandler = tellMessageHandler;
-        this.BOT_NAME = config.getProperty("bot.name");
-        this.SERVER_NAME = config.getProperty("server.name");
-        this.SERVER_PORT = Integer.parseInt(config.getProperty("server.port"));
-        this.CHANNEL_NAMES = config.CHANNEL_NAMES;  // Populate from Config
+        this.BOT_NAME = config.getBotName();
+        this.SERVER_NAME = config.getServerName();
+        this.SERVER_PORT = config.getServerPort();
+        this.CHANNEL_NAMES = config.getChannelNames();  // Populate from Config
         this.reminderHandler = new ReminderHandler(config.getDbConnection());
         reminderHandler.init(); // First, initialize reminders from the database
         reminderHandler.cleanupOldReminders(); // Then cleanup old reminders
         reminderHandler.init(); // Finally, reinitialize reminders from the updated database
         this.urbanDictionaryService = urbanDictionaryService;
         this.helpService = new HelpService();
-        this.BOT_NICKSERV_PW = config.getProperty("nickserv.pw");
-        this.BOT_NICKSERV_EMAIL = config.getProperty("nickserv.email");
-        this.BOT_ADMIN = config.getProperty("bot.admin");
+        this.BOT_NICKSERV_PW = config.getNickservPw();
+        this.BOT_NICKSERV_EMAIL = config.getNickservEmail();
+        this.BOT_ADMIN = config.getBotAdmin();
     }
 
     public static void main(String[] args) throws SQLException {

@@ -21,7 +21,7 @@ public class UrbanDictionaryService {
     private static final Logger logger = LoggerFactory.getLogger(UrbanDictionaryService.class);
 
     public UrbanDictionaryService(Config config) {
-        this.apiKey = config.getProperty("ud.apiKey");
+        this.apiKey = config.getudapiKey();
     }
 
     public List<String> searchUrbanDictionary(String term) {

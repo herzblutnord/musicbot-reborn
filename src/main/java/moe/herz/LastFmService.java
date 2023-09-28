@@ -25,7 +25,7 @@ public class LastFmService {
     private static final Logger logger = LoggerFactory.getLogger(LastFmService.class);
 
     public LastFmService(Config config) {
-        this.apiKey = config.getProperty("lfm.apiKey");
+        this.apiKey = config.getlastfmapiKey();
         this.dbConnection = config.getDbConnection();
     }
 
