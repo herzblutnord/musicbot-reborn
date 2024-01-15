@@ -240,7 +240,7 @@ public class Musicbot extends ListenerAdapter {
                     }
                 }
 
-        } else if (url.contains("youtube.com/channel/")) {
+            } else if (url.contains("youtube.com/channel/")) {
                 Pattern pattern = Pattern.compile("channel/([a-zA-Z0-9_-]+)");
                 Matcher channelMatcher = pattern.matcher(url);
                 if (channelMatcher.find()) {
